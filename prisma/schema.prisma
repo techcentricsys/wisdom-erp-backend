@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+model User {
+  id             String      @id @default(uuid())
+  fullName       String
+  email          String      @unique
+  passwordHash   String
+
+  // Optional system role
+  role           UserRole    @default(USER)
+
+  // Custom Access Role
+  accessRoleId   String?
+  accessRole     AccessRole? @relation(fields: [accessRoleId], references: [id], onDelete: SetNull)
+
+  isActive       Boolean     @default(true)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model AccessRole {
+  id          String                 @id @default(uuid())
+  name        String                 @unique
+  description String?
+  isSystem    Boolean                @default(false)
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  users       User[]
+  permissions AccessRolePermission[]
+}
+
+model AccessPermission {
+  id          String                 @id @default(uuid())
+  code        String                 @unique
+  description String?
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  roles       AccessRolePermission[]
+}
+
+model AccessRolePermission {
+  roleId       String
+  permissionId String
+
+  role         AccessRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   AccessPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  assignedAt   DateTime @default(now())
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@index([roleId])
+}
