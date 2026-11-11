@@ -166,8 +166,18 @@ model User {
   lastLoginAt  DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  companyId String?
-company   Company? @relation(fields: [companyId], references: [id])
+  companyId    String?
+  company      Company?     @relation(fields: [companyId], references: [id])
+
+  baseRole        String    @default("Local User")
+  department      String?
+  designation     String?
+  managerId       String?
+  manager         User?     @relation("Reporting", fields: [managerId], references: [id])
+  team            User[]    @relation("Reporting")
+  canCreateMaster Boolean   @default(false)
+  failedLogins    Int       @default(0)
+  lockedUntil     DateTime?
 
   userRoles              UserRole[]
   auditLogs              AuditLog[]
@@ -185,8 +195,11 @@ model Role {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  userRoles UserRole[]
-  rolePerms RolePermission[]
+  userRoles             UserRole[]
+  rolePerms             RolePermission[]
+  baseRole              String                 @default("Local User")
+  isSystem              Boolean                @default(false)
+  roleScreenPermissions RoleScreenPermission[]
 }
 
 model Permission {
@@ -1331,9 +1344,8 @@ model SystemLog {
   @@index([timestamp])
 }
 
-
 model Company {
-  users User[]
+  users     User[]
   id        String   @id @default(uuid())
   name      String
   code      String   @unique
@@ -1342,4 +1354,19 @@ model Company {
   address   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model RoleScreenPermission {
+  id          String  @id @default(uuid())
+  roleId      String
+  role        Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  screenLabel String
+  canAccess   Boolean @default(false)
+  canView     Boolean @default(false)
+  canCreate   Boolean @default(false)
+  canEdit     Boolean @default(false)
+  canDelete   Boolean @default(false)
+
+  @@unique([roleId, screenLabel])
+  @@index([roleId])
 }
