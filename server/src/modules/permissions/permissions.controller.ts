@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../auth/guards/roles.guard.js';
 import { Roles } from '../../auth/decorators/roles.decorator.js';
@@ -51,6 +51,19 @@ export class PermissionsController {
     return this.permissions.createUser(request.jwtUser.sub, payload);
   }
 
+  @Patch('users/:userId')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  updateUser(@Req() request: any, @Param('userId') userId: string, @Body() payload: any) {
+    return this.permissions.updateUser(request.jwtUser.sub, userId, payload);
+  }
+
+  @Delete('users/:userId')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  deleteUser(@Req() request: any, @Param('userId') userId: string) {
+    return this.permissions.deleteUser(request.jwtUser.sub, userId);
+  }
   @Get('roles/:id/permissions')
   @UseGuards(RolesGuard)
   @Roles('ADMIN')

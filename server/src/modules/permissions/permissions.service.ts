@@ -130,6 +130,108 @@ export class PermissionsService implements OnModuleInit {
     }
   }
 
+  async updateUser(actorId: string, userId: string, payload: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    password?: string;
+    roleId?: string;
+    status?: string;
+  }) {
+    const companyId = await this.companyIdFor(actorId);
+    const target = await this.prisma.user.findFirst({
+      where: { id: userId, companyId },
+      include: { userRoles: { include: { role: { select: { name: true } } } } },
+    });
+    if (!target) throw new NotFoundException('User not found in your company.');
+
+    const data: Prisma.UserUpdateInput = {};
+    if (payload.firstName !== undefined) {
+      if (typeof payload.firstName !== 'string' || !payload.firstName.trim()) throw new BadRequestException('First name is required.');
+      data.firstName = payload.firstName.trim();
+    }
+    if (payload.lastName !== undefined) {
+      if (typeof payload.lastName !== 'string') throw new BadRequestException('Last name must be text.');
+      data.lastName = payload.lastName.trim();
+    }
+    if (payload.email !== undefined) {
+      if (typeof payload.email !== 'string') throw new BadRequestException('A valid email is required.');
+      const email = payload.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('A valid email is required.');
+      data.email = email;
+    }
+    if (payload.password) {
+      if (typeof payload.password !== 'string' || payload.password.length < 8) throw new BadRequestException('Password must be at least 8 characters.');
+      data.passwordHash = await bcrypt.hash(payload.password, 12);
+    }
+    if (payload.status !== undefined) {
+      if (typeof payload.status !== 'string') throw new BadRequestException('Status must be ACTIVE, INACTIVE, or SUSPENDED.');
+      const status = payload.status.toUpperCase();
+      if (!['ACTIVE', 'INACTIVE', 'SUSPENDED'].includes(status)) {
+        throw new BadRequestException('Status must be ACTIVE, INACTIVE, or SUSPENDED.');
+      }
+      if (status !== 'ACTIVE' && actorId === userId) throw new ForbiddenException('You cannot deactivate your own account.');
+      const targetIsAdmin = target.userRoles.some(({ role }) => role.name.toUpperCase() === 'ADMIN');
+      if (status !== 'ACTIVE' && target.status === 'ACTIVE' && targetIsAdmin) {
+        const activeAdmins = await this.prisma.user.count({
+          where: { companyId, status: 'ACTIVE', userRoles: { some: { role: { name: 'ADMIN' } } } },
+        });
+        if (activeAdmins <= 1) throw new ForbiddenException('The last active administrator cannot be deactivated.');
+      }
+      data.status = status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+    }
+
+    let roleId: string | undefined;
+    if (payload.roleId !== undefined) {
+      const role = await this.prisma.role.findUnique({ where: { id: payload.roleId }, select: { id: true } });
+      if (!role) throw new NotFoundException('Role not found.');
+      roleId = role.id;
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        if (Object.keys(data).length) await tx.user.update({ where: { id: userId }, data });
+        if (roleId) {
+          await tx.userRole.deleteMany({ where: { userId } });
+          await tx.userRole.create({ data: { userId, roleId } });
+        }
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('A user with this email already exists.');
+      }
+      throw error;
+    }
+
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, lastName: true, status: true, userRoles: { include: { role: { select: { id: true, name: true } } } } },
+    });
+  }
+
+  async deleteUser(actorId: string, userId: string) {
+    const companyId = await this.companyIdFor(actorId);
+    const target = await this.prisma.user.findFirst({
+      where: { id: userId, companyId },
+      include: { userRoles: { include: { role: { select: { name: true } } } } },
+    });
+    if (!target) throw new NotFoundException('User not found in your company.');
+    if (actorId === userId) throw new ForbiddenException('You cannot delete your own account.');
+
+    const isAdmin = target.userRoles.some(({ role }) => role.name.toUpperCase() === 'ADMIN');
+    if (isAdmin) {
+      const activeAdmins = await this.prisma.user.count({
+        where: { companyId, status: 'ACTIVE', userRoles: { some: { role: { name: 'ADMIN' } } } },
+      });
+      if (activeAdmins <= 1) throw new ForbiddenException('The last active administrator cannot be deleted.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+    return { success: true };
+  }
   async myPermissions(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
