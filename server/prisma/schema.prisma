@@ -184,6 +184,7 @@ model User {
   purchaseOrdersCreated  PurchaseOrder[]
   productionPlansCreated ProductionPlan[]
   masterAccountsCreated  MasterAccount[]
+  offersCreated          Offer[]
 
   @@index([email])
   @@index([companyId])
@@ -1428,4 +1429,69 @@ model BankDetail {
   updatedAt    DateTime      @updatedAt
 
   @@index([accountId])
+}
+
+model Offer {
+  id               String      @id @default(uuid())
+  no               String      @unique
+  offerDate        String
+  validityDate     String
+  inquiryNo        String
+  customer         String
+  customerId       String?
+  supplier         String
+  supplierId       String?
+  salesperson      String?
+  salespersonId    String?
+  commercialPerson String?
+  portLoading      String?
+  portDestination  String?
+  partialShipment  String      @default("Allowed")
+  transShipment    String      @default("Allowed")
+  shipmentPeriod   String?
+  currency         String      @default("US DOLLAR")
+  incoterm         String?
+  insurance        String?
+  remarks          String?
+  status           String      @default("Open")
+  denyDate         String?
+  denyReason       String?
+  approvalStatus   String      @default("Pending")
+  approvedBy       String?
+  approvalDate     String?
+  approvalRemark   String?
+  createdBy        String?
+  creator          User?       @relation(fields: [createdBy], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  items OfferItem[]
+
+  @@index([inquiryNo])
+  @@index([status])
+  @@index([approvalStatus])
+  @@index([createdBy])
+}
+
+model OfferItem {
+  id           String   @id @default(uuid())
+  offerNo      String
+  offer        Offer    @relation(fields: [offerNo], references: [no], onDelete: Cascade)
+  productId    String?
+  product      String
+  category     String?
+  description  String?
+  supplier     String?
+  quantity     Decimal
+  unit         String
+  rate         Decimal
+  commission   Decimal  @default(0)
+  shippingMode String?
+  paymentTerm  String?
+  manufacturer String?
+  packing      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([offerNo])
 }
