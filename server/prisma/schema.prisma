@@ -7,9 +7,1186 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//
-// ENUMS
-//
+model User {
+  id                     Int              @id @default(autoincrement())
+  email                  String           @unique
+  passwordHash           String?
+  firstName              String
+  lastName               String
+  status                 UserStatus       @default(ACTIVE)
+  provider               AuthProvider     @default(LOCAL)
+  lastLoginAt            DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  companyId              Int?
+  baseRole               String           @default("Local User")
+  department             String?
+  designation            String?
+  managerId              Int?
+  canCreateMaster        Boolean          @default(false)
+  failedLogins           Int              @default(0)
+  lockedUntil            DateTime?
+  auditLogs              AuditLog[]
+  productionPlansCreated ProductionPlan[]
+  purchaseOrdersCreated  PurchaseOrder[]
+  company                Company?         @relation(fields: [companyId], references: [id])
+  userRoles              UserRole[]
+  createdItems           Item[]           @relation("ItemCreatedBy")
+
+  @@index([email])
+  @@index([companyId])
+}
+
+model Role {
+  id                    Int                    @id @default(autoincrement())
+  name                  String                 @unique
+  description           String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  baseRole              String                 @default("Local User")
+  isSystem              Boolean                @default(false)
+  rolePerms             RolePermission[]
+  userRoles             UserRole[]
+  roleScreenPermissions RoleScreenPermission[]
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  rolePerms   RolePermission[]
+}
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  roleId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  role      Role     @relation(fields: [roleId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  role         Role       @relation(fields: [roleId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model Supplier {
+  id                   Int                   @id @default(autoincrement())
+  code                 String                @unique
+  name                 String
+  contactName          String?
+  email                String?
+  phone                String?
+  addressLine1         String?
+  addressLine2         String?
+  city                 String?
+  state                String?
+  postalCode           String?
+  country              String?
+  paymentTerms         String?
+  taxNumber            String?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  payments             Payment[]
+  purchaseOrders       PurchaseOrder[]
+  purchaseRequisitions PurchaseRequisition[]
+  supplierInvoices     SupplierInvoice[]
+  items                ItemSupplier[]
+
+  @@index([code])
+  @@index([name])
+}
+
+model Manufacturer {
+  id          Int                @id @default(autoincrement())
+  code        String             @unique
+  name        String
+  description String?
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  items       ItemManufacturer[]
+
+  @@index([code])
+  @@index([name])
+}
+
+model ItemSupplier {
+  id                  Int      @id @default(autoincrement())
+  itemId              Int
+  supplierId          Int
+  supplierProductCode String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  item                Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  supplier            Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  // A supplier can use its own product code; the same code can exist for another supplier.
+  @@unique([itemId, supplierId])
+  @@unique([supplierId, supplierProductCode])
+  @@index([itemId])
+  @@index([supplierId])
+  @@index([supplierProductCode])
+}
+
+model ItemManufacturer {
+  id             Int          @id @default(autoincrement())
+  itemId         Int
+  manufacturerId Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  item           Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  manufacturer   Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, manufacturerId])
+  @@index([itemId])
+  @@index([manufacturerId])
+}
+
+model PurchaseRequisition {
+  id            Int                       @id @default(autoincrement())
+  requisitionNo String                    @unique
+  requestedById Int?
+  supplierId    Int?
+  status        PurchaseRequisitionStatus @default(DRAFT)
+  requiredDate  DateTime?
+  notes         String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  requestedBy   Employee?                 @relation(fields: [requestedById], references: [id])
+  supplier      Supplier?                 @relation(fields: [supplierId], references: [id])
+  items         PurchaseRequisitionItem[]
+
+  @@index([requisitionNo])
+  @@index([supplierId])
+  @@index([requestedById])
+}
+
+model PurchaseRequisitionItem {
+  id                    Int                 @id @default(autoincrement())
+  purchaseRequisitionId Int
+  itemId                Int
+  quantity              Decimal
+  unitPrice             Decimal?
+  requiredDate          DateTime?
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  item                  Item                @relation(fields: [itemId], references: [id])
+  requisition           PurchaseRequisition @relation(fields: [purchaseRequisitionId], references: [id])
+
+  @@index([purchaseRequisitionId])
+  @@index([itemId])
+}
+
+model PurchaseOrder {
+  id               Int                 @id @default(autoincrement())
+  orderNo          String              @unique
+  supplierId       Int
+  orderDate        DateTime
+  expectedDate     DateTime?
+  status           PurchaseOrderStatus @default(DRAFT)
+  currency         String              @default("USD")
+  totalAmount      Decimal
+  notes            String?
+  createdById      Int?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  goodsReceipts    GoodsReceipt[]
+  createdBy        User?               @relation(fields: [createdById], references: [id])
+  supplier         Supplier            @relation(fields: [supplierId], references: [id])
+  items            PurchaseOrderItem[]
+  supplierInvoices SupplierInvoice[]
+
+  @@index([orderNo])
+  @@index([supplierId])
+}
+
+model PurchaseOrderItem {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  itemId          Int
+  quantity        Decimal
+  receivedQty     Decimal       @default(0)
+  unitPrice       Decimal
+  taxRate         Decimal?
+  discount        Decimal?
+  lineTotal       Decimal
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  item            Item          @relation(fields: [itemId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([itemId])
+}
+
+model GoodsReceipt {
+  id              Int                @id @default(autoincrement())
+  grnNo           String             @unique
+  purchaseOrderId Int
+  receivedDate    DateTime
+  status          GoodsReceiptStatus @default(PENDING)
+  receivedById    Int?
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  receivedBy      Employee?          @relation(fields: [receivedById], references: [id])
+  items           GoodsReceiptItem[]
+  stockMovements  StockMovement[]
+
+  @@index([grnNo])
+  @@index([purchaseOrderId])
+}
+
+model GoodsReceiptItem {
+  id             Int                @id @default(autoincrement())
+  goodsReceiptId Int
+  itemId         Int
+  warehouseId    Int
+  locationId     Int?
+  batchId        Int?
+  quantity       Decimal
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  batch          Batch?             @relation(fields: [batchId], references: [id])
+  goodsReceipt   GoodsReceipt       @relation(fields: [goodsReceiptId], references: [id])
+  item           Item               @relation(fields: [itemId], references: [id])
+  location       WarehouseLocation? @relation(fields: [locationId], references: [id])
+  warehouse      Warehouse          @relation(fields: [warehouseId], references: [id])
+
+  @@index([goodsReceiptId])
+  @@index([itemId])
+  @@index([warehouseId])
+  @@index([batchId])
+}
+
+model SupplierInvoice {
+  id              Int            @id @default(autoincrement())
+  invoiceNo       String         @unique
+  supplierId      Int
+  purchaseOrderId Int?
+  invoiceDate     DateTime
+  dueDate         DateTime?
+  status          InvoiceStatus  @default(DRAFT)
+  totalAmount     Decimal
+  currency        String         @default("USD")
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  supplier        Supplier       @relation(fields: [supplierId], references: [id])
+
+  @@index([invoiceNo])
+  @@index([supplierId])
+}
+
+model ItemCategory {
+  id          Int            @id @default(autoincrement())
+  code        String         @unique
+  name        String
+  description String?
+  parentId    Int?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  items       Item[]
+  parent      ItemCategory?  @relation("ItemCategoryToParent", fields: [parentId], references: [id])
+  children    ItemCategory[] @relation("ItemCategoryToParent")
+
+  @@index([code])
+}
+
+model ProductType {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     Item[]
+}
+
+model UnitOfMeasure {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       Item[]
+}
+
+model Item {
+  id                   Int                       @id @default(autoincrement())
+  sku                  String                    @unique
+  name                 String
+  description          String?
+  categoryId           Int?
+  uom                  String
+  isBatchManaged       Boolean                   @default(false)
+  isActive             Boolean                   @default(true)
+  minStockLevel        Decimal?
+  maxStockLevel        Decimal?
+  productTypeId        Int?
+  defaultUomId         Int?
+  casNumber            String?
+  packing              String?
+  createdById          Int?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  batches              Batch[]
+  goodsReceiptItems    GoodsReceiptItem[]
+  category             ItemCategory?             @relation(fields: [categoryId], references: [id])
+  createdBy            User?                     @relation("ItemCreatedBy", fields: [createdById], references: [id])
+  defaultUom           UnitOfMeasure?            @relation(fields: [defaultUomId], references: [id])
+  productType          ProductType?              @relation(fields: [productTypeId], references: [id])
+  machineOutputs       MachineOutput[]
+  materialConsumptions MaterialConsumption[]
+  productionOrders     ProductionOrder[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  requisitionItems     PurchaseRequisitionItem[]
+  quotationItems       QuotationItem[]
+  reels                Reel[]
+  salesOrderItems      SalesOrderItem[]
+  spareParts           SparePart[]
+  stock                Stock[]
+  stockMovements       StockMovement[]
+  stockTransfers       StockTransfer[]
+  wasteEntries         WasteEntry[]
+  suppliers            ItemSupplier[]
+  manufacturers        ItemManufacturer[]
+
+  @@index([sku])
+  @@index([name])
+  @@index([productTypeId])
+  @@index([defaultUomId])
+  @@index([createdById])
+}
+
+model Warehouse {
+  id                   Int                   @id @default(autoincrement())
+  code                 String                @unique
+  name                 String
+  address              String?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  goodsReceiptItems    GoodsReceiptItem[]
+  machineOutputs       MachineOutput[]
+  materialConsumptions MaterialConsumption[]
+  stock                Stock[]
+  stockMovements       StockMovement[]
+  stockTransfersFrom   StockTransfer[]       @relation("StockTransferFromWarehouse")
+  stockTransfersTo     StockTransfer[]       @relation("StockTransferToWarehouse")
+  locations            WarehouseLocation[]
+}
+
+model WarehouseLocation {
+  id                   Int                   @id @default(autoincrement())
+  warehouseId          Int
+  code                 String
+  description          String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  goodsReceiptItems    GoodsReceiptItem[]
+  machineOutputs       MachineOutput[]
+  materialConsumptions MaterialConsumption[]
+  stock                Stock[]
+  stockMovements       StockMovement[]
+  stockTransfersFrom   StockTransfer[]       @relation("StockTransferFromLocation")
+  stockTransfersTo     StockTransfer[]       @relation("StockTransferToLocation")
+  warehouse            Warehouse             @relation(fields: [warehouseId], references: [id])
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId])
+}
+
+model Stock {
+  id          Int                @id @default(autoincrement())
+  itemId      Int
+  warehouseId Int
+  locationId  Int?
+  batchId     Int?
+  quantity    Decimal
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  batch       Batch?             @relation(fields: [batchId], references: [id])
+  item        Item               @relation(fields: [itemId], references: [id])
+  location    WarehouseLocation? @relation(fields: [locationId], references: [id])
+  warehouse   Warehouse          @relation(fields: [warehouseId], references: [id])
+
+  @@unique([itemId, warehouseId, locationId, batchId])
+  @@index([itemId])
+  @@index([warehouseId])
+}
+
+model StockMovement {
+  id                Int                @id @default(autoincrement())
+  movementNo        String             @unique
+  itemId            Int
+  warehouseId       Int
+  locationId        Int?
+  batchId           Int?
+  quantity          Decimal
+  movementType      StockMovementType
+  referenceType     String?
+  referenceId       String?
+  goodsReceiptId    Int?
+  productionOrderId Int?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  batch             Batch?             @relation(fields: [batchId], references: [id])
+  goodsReceipt      GoodsReceipt?      @relation(fields: [goodsReceiptId], references: [id])
+  item              Item               @relation(fields: [itemId], references: [id])
+  location          WarehouseLocation? @relation(fields: [locationId], references: [id])
+  productionOrder   ProductionOrder?   @relation(fields: [productionOrderId], references: [id])
+  warehouse         Warehouse          @relation(fields: [warehouseId], references: [id])
+
+  @@index([itemId])
+  @@index([warehouseId])
+  @@index([movementType])
+}
+
+model StockTransfer {
+  id              Int                @id @default(autoincrement())
+  transferNo      String             @unique
+  fromWarehouseId Int
+  fromLocationId  Int?
+  toWarehouseId   Int
+  toLocationId    Int?
+  itemId          Int
+  batchId         Int?
+  quantity        Decimal
+  transferDate    DateTime
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  batch           Batch?             @relation(fields: [batchId], references: [id])
+  fromLocation    WarehouseLocation? @relation("StockTransferFromLocation", fields: [fromLocationId], references: [id])
+  fromWarehouse   Warehouse          @relation("StockTransferFromWarehouse", fields: [fromWarehouseId], references: [id])
+  item            Item               @relation(fields: [itemId], references: [id])
+  toLocation      WarehouseLocation? @relation("StockTransferToLocation", fields: [toLocationId], references: [id])
+  toWarehouse     Warehouse          @relation("StockTransferToWarehouse", fields: [toWarehouseId], references: [id])
+
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@index([itemId])
+}
+
+model Batch {
+  id                   Int                   @id @default(autoincrement())
+  batchNo              String
+  itemId               Int
+  manufactureDate      DateTime?
+  expiryDate           DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  item                 Item                  @relation(fields: [itemId], references: [id])
+  goodsReceiptItems    GoodsReceiptItem[]
+  machineOutputs       MachineOutput[]
+  materialConsumptions MaterialConsumption[]
+  stock                Stock[]
+  stockMovements       StockMovement[]
+  stockTransfers       StockTransfer[]
+
+  @@unique([itemId, batchNo])
+  @@index([itemId])
+  @@index([batchNo])
+}
+
+model Machine {
+  id                    Int                    @id @default(autoincrement())
+  code                  String                 @unique
+  name                  String
+  description           String?
+  location              String?
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  breakdownLogs         BreakdownLog[]
+  machineOutputs        MachineOutput[]
+  maintenanceSchedules  MaintenanceSchedule[]
+  maintenanceWorkOrders MaintenanceWorkOrder[]
+  productionLogs        ProductionLog[]
+  productionOrders      ProductionOrder[]
+  reels                 Reel[]
+  wasteEntries          WasteEntry[]
+}
+
+model ProductionPlan {
+  id               Int               @id @default(autoincrement())
+  planNo           String            @unique
+  planDate         DateTime
+  startDate        DateTime?
+  endDate          DateTime?
+  createdById      Int?
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  productionOrders ProductionOrder[]
+  createdBy        User?             @relation(fields: [createdById], references: [id])
+
+  @@index([planNo])
+}
+
+model ProductionOrder {
+  id                   Int                   @id @default(autoincrement())
+  orderNo              String                @unique
+  productionPlanId     Int?
+  salesOrderId         Int?
+  itemId               Int
+  machineId            Int?
+  plannedQty           Decimal
+  producedQty          Decimal               @default(0)
+  status               ProductionOrderStatus @default(PLANNED)
+  startDate            DateTime?
+  endDate              DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  machineOutputs       MachineOutput[]
+  materialConsumptions MaterialConsumption[]
+  logs                 ProductionLog[]
+  item                 Item                  @relation(fields: [itemId], references: [id])
+  machine              Machine?              @relation(fields: [machineId], references: [id])
+  productionPlan       ProductionPlan?       @relation(fields: [productionPlanId], references: [id])
+  salesOrder           SalesOrder?           @relation(fields: [salesOrderId], references: [id])
+  reels                Reel[]
+  stockMovements       StockMovement[]
+  wasteEntries         WasteEntry[]
+
+  @@index([orderNo])
+  @@index([itemId])
+  @@index([status])
+}
+
+model ProductionLog {
+  id                Int             @id @default(autoincrement())
+  productionOrderId Int
+  machineId         Int?
+  startTime         DateTime
+  endTime           DateTime?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  machine           Machine?        @relation(fields: [machineId], references: [id])
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([machineId])
+}
+
+model MaterialConsumption {
+  id                Int                @id @default(autoincrement())
+  productionOrderId Int
+  itemId            Int
+  warehouseId       Int
+  locationId        Int?
+  batchId           Int?
+  quantity          Decimal
+  consumptionDate   DateTime
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  batch             Batch?             @relation(fields: [batchId], references: [id])
+  item              Item               @relation(fields: [itemId], references: [id])
+  location          WarehouseLocation? @relation(fields: [locationId], references: [id])
+  productionOrder   ProductionOrder    @relation(fields: [productionOrderId], references: [id])
+  warehouse         Warehouse          @relation(fields: [warehouseId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([itemId])
+}
+
+model MachineOutput {
+  id                Int                @id @default(autoincrement())
+  productionOrderId Int
+  itemId            Int
+  machineId         Int?
+  warehouseId       Int
+  locationId        Int?
+  batchId           Int?
+  quantity          Decimal
+  outputDate        DateTime
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  batch             Batch?             @relation(fields: [batchId], references: [id])
+  item              Item               @relation(fields: [itemId], references: [id])
+  location          WarehouseLocation? @relation(fields: [locationId], references: [id])
+  machine           Machine?           @relation(fields: [machineId], references: [id])
+  productionOrder   ProductionOrder    @relation(fields: [productionOrderId], references: [id])
+  warehouse         Warehouse          @relation(fields: [warehouseId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([itemId])
+}
+
+model WasteEntry {
+  id                Int              @id @default(autoincrement())
+  productionOrderId Int?
+  itemId            Int?
+  machineId         Int?
+  reason            String?
+  quantity          Decimal
+  entryDate         DateTime
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  item              Item?            @relation(fields: [itemId], references: [id])
+  machine           Machine?         @relation(fields: [machineId], references: [id])
+  productionOrder   ProductionOrder? @relation(fields: [productionOrderId], references: [id])
+
+  @@index([productionOrderId])
+}
+
+model Reel {
+  id                Int              @id @default(autoincrement())
+  reelNo            String           @unique
+  productionOrderId Int?
+  machineId         Int?
+  itemId            Int?
+  length            Decimal?
+  weight            Decimal?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  item              Item?            @relation(fields: [itemId], references: [id])
+  machine           Machine?         @relation(fields: [machineId], references: [id])
+  productionOrder   ProductionOrder? @relation(fields: [productionOrderId], references: [id])
+
+  @@index([reelNo])
+}
+
+model Customer {
+  id           Int          @id @default(autoincrement())
+  code         String       @unique
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  taxNumber    String?
+  paymentTerms String?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deliveries   Delivery[]
+  invoices     Invoice[]
+  payments     Payment[]
+  quotations   Quotation[]
+  salesOrders  SalesOrder[]
+
+  @@index([code])
+  @@index([name])
+}
+
+model Quotation {
+  id          Int             @id @default(autoincrement())
+  quoteNo     String          @unique
+  customerId  Int
+  quoteDate   DateTime
+  validUntil  DateTime?
+  status      String?
+  currency    String          @default("USD")
+  totalAmount Decimal
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  customer    Customer        @relation(fields: [customerId], references: [id])
+  items       QuotationItem[]
+  salesOrders SalesOrder[]
+
+  @@index([quoteNo])
+  @@index([customerId])
+}
+
+model QuotationItem {
+  id          Int       @id @default(autoincrement())
+  quotationId Int
+  itemId      Int
+  quantity    Decimal
+  unitPrice   Decimal
+  discount    Decimal?
+  lineTotal   Decimal
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  item        Item      @relation(fields: [itemId], references: [id])
+  quotation   Quotation @relation(fields: [quotationId], references: [id])
+
+  @@index([quotationId])
+  @@index([itemId])
+}
+
+model SalesOrder {
+  id               Int               @id @default(autoincrement())
+  orderNo          String            @unique
+  customerId       Int
+  quotationId      Int?
+  orderDate        DateTime
+  status           SalesOrderStatus  @default(DRAFT)
+  currency         String            @default("USD")
+  totalAmount      Decimal
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deliveries       Delivery[]
+  invoices         Invoice[]
+  productionOrders ProductionOrder[]
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  quotation        Quotation?        @relation(fields: [quotationId], references: [id])
+  items            SalesOrderItem[]
+
+  @@index([orderNo])
+  @@index([customerId])
+  @@index([status])
+}
+
+model SalesOrderItem {
+  id           Int        @id @default(autoincrement())
+  salesOrderId Int
+  itemId       Int
+  quantity     Decimal
+  deliveredQty Decimal    @default(0)
+  unitPrice    Decimal
+  discount     Decimal?
+  lineTotal    Decimal
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  item         Item       @relation(fields: [itemId], references: [id])
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
+
+  @@index([salesOrderId])
+  @@index([itemId])
+}
+
+model Delivery {
+  id                 Int               @id @default(autoincrement())
+  deliveryNo         String            @unique
+  customerId         Int?
+  salesOrderId       Int?
+  dispatchScheduleId Int?
+  status             DeliveryStatus    @default(PLANNED)
+  deliveryDate       DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  customer           Customer?         @relation(fields: [customerId], references: [id])
+  dispatchSchedule   DispatchSchedule? @relation(fields: [dispatchScheduleId], references: [id])
+  salesOrder         SalesOrder?       @relation(fields: [salesOrderId], references: [id])
+  invoices           Invoice[]
+  shipments          Shipment[]
+
+  @@index([deliveryNo])
+  @@index([customerId])
+}
+
+model Shipment {
+  id         Int            @id @default(autoincrement())
+  shipmentNo String         @unique
+  deliveryId Int
+  vehicleId  Int?
+  driverId   Int?
+  shipDate   DateTime
+  status     DeliveryStatus @default(IN_TRANSIT)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  delivery   Delivery       @relation(fields: [deliveryId], references: [id])
+  driver     Driver?        @relation(fields: [driverId], references: [id])
+  vehicle    Vehicle?       @relation(fields: [vehicleId], references: [id])
+
+  @@index([shipmentNo])
+  @@index([deliveryId])
+}
+
+model Invoice {
+  id           Int           @id @default(autoincrement())
+  invoiceNo    String        @unique
+  customerId   Int
+  salesOrderId Int?
+  deliveryId   Int?
+  invoiceDate  DateTime
+  dueDate      DateTime?
+  status       InvoiceStatus @default(DRAFT)
+  totalAmount  Decimal
+  currency     String        @default("USD")
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  delivery     Delivery?     @relation(fields: [deliveryId], references: [id])
+  salesOrder   SalesOrder?   @relation(fields: [salesOrderId], references: [id])
+  payments     Payment[]
+
+  @@index([invoiceNo])
+  @@index([customerId])
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  paymentNo     String        @unique
+  customerId    Int?
+  supplierId    Int?
+  invoiceId     Int?
+  amount        Decimal
+  paymentDate   DateTime
+  status        PaymentStatus @default(PENDING)
+  method        String?
+  bankAccountId Int?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  bankAccount   BankAccount?  @relation(fields: [bankAccountId], references: [id])
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  invoice       Invoice?      @relation(fields: [invoiceId], references: [id])
+  supplier      Supplier?     @relation(fields: [supplierId], references: [id])
+
+  @@index([paymentNo])
+  @@index([customerId])
+  @@index([supplierId])
+}
+
+model Vehicle {
+  id                Int                @id @default(autoincrement())
+  registrationNo    String             @unique
+  type              String?
+  capacity          Decimal?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  dispatchSchedules DispatchSchedule[]
+  shipments         Shipment[]
+}
+
+model Driver {
+  id                Int                @id @default(autoincrement())
+  employeeId        Int?               @unique
+  name              String
+  phone             String?
+  licenseNo         String?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  dispatchSchedules DispatchSchedule[]
+  employee          Employee?          @relation(fields: [employeeId], references: [id])
+  shipments         Shipment[]
+}
+
+model DispatchSchedule {
+  id          Int            @id @default(autoincrement())
+  scheduleNo  String         @unique
+  vehicleId   Int?
+  driverId    Int?
+  plannedDate DateTime
+  status      DispatchStatus @default(PLANNED)
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deliveries  Delivery[]
+  driver      Driver?        @relation(fields: [driverId], references: [id])
+  vehicle     Vehicle?       @relation(fields: [vehicleId], references: [id])
+
+  @@index([scheduleNo])
+}
+
+model Department {
+  id          Int          @id @default(autoincrement())
+  code        String       @unique
+  name        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  costCenters CostCenter[]
+  employees   Employee[]
+}
+
+model Employee {
+  id                   Int                   @id @default(autoincrement())
+  employeeNo           String                @unique
+  firstName            String
+  lastName             String
+  departmentId         Int?
+  email                String?
+  phone                String?
+  hireDate             DateTime?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  attendances          Attendance[]
+  driver               Driver?
+  department           Department?           @relation(fields: [departmentId], references: [id])
+  goodsReceipts        GoodsReceipt[]
+  purchaseRequisitions PurchaseRequisition[]
+  salarySlips          SalarySlip[]
+}
+
+model Attendance {
+  id         Int              @id @default(autoincrement())
+  employeeId Int
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     AttendanceStatus @default(PRESENT)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  employee   Employee         @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+}
+
+model Shift {
+  id        Int       @id @default(autoincrement())
+  name      String
+  type      ShiftType
+  startTime String
+  endTime   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Payroll {
+  id          Int          @id @default(autoincrement())
+  periodStart DateTime
+  periodEnd   DateTime
+  processedOn DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  salarySlips SalarySlip[]
+}
+
+model SalarySlip {
+  id          Int       @id @default(autoincrement())
+  payrollId   Int?
+  employeeId  Int
+  grossSalary Decimal
+  netSalary   Decimal
+  deductions  Decimal?
+  allowances  Decimal?
+  payDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  payroll     Payroll?  @relation(fields: [payrollId], references: [id])
+
+  @@index([employeeId])
+}
+
+model Account {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  name         String
+  type         String
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bankAccounts BankAccount[]
+  journalLines JournalLine[]
+}
+
+model CostCenter {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  name         String
+  departmentId Int?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  journalLines JournalLine[]
+}
+
+model JournalEntry {
+  id                    Int                    @id @default(autoincrement())
+  entryNo               String                 @unique
+  entryDate             DateTime
+  type                  JournalEntryType       @default(GENERAL)
+  reference             String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  financialTransactions FinancialTransaction[]
+  lines                 JournalLine[]
+
+  @@index([entryDate])
+}
+
+model JournalLine {
+  id             Int          @id @default(autoincrement())
+  journalEntryId Int
+  accountId      Int
+  costCenterId   Int?
+  debit          Decimal      @default(0)
+  credit         Decimal      @default(0)
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  account        Account      @relation(fields: [accountId], references: [id])
+  costCenter     CostCenter?  @relation(fields: [costCenterId], references: [id])
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model BankAccount {
+  id            Int                    @id @default(autoincrement())
+  bankName      String
+  accountNumber String                 @unique
+  accountName   String
+  accountId     Int?
+  currency      String                 @default("USD")
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  account       Account?               @relation(fields: [accountId], references: [id])
+  transactions  FinancialTransaction[]
+  payments      Payment[]
+}
+
+model FinancialTransaction {
+  id              Int                      @id @default(autoincrement())
+  bankAccountId   Int
+  journalEntryId  Int?
+  transactionDate DateTime
+  amount          Decimal
+  type            FinancialTransactionType
+  reference       String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  bankAccount     BankAccount              @relation(fields: [bankAccountId], references: [id])
+  journalEntry    JournalEntry?            @relation(fields: [journalEntryId], references: [id])
+
+  @@index([bankAccountId])
+  @@index([transactionDate])
+}
+
+model MaintenanceSchedule {
+  id          Int                    @id @default(autoincrement())
+  machineId   Int
+  scheduleNo  String                 @unique
+  plannedDate DateTime
+  status      MaintenanceStatus      @default(PLANNED)
+  priority    PriorityLevel          @default(MEDIUM)
+  description String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  machine     Machine                @relation(fields: [machineId], references: [id])
+  workOrders  MaintenanceWorkOrder[]
+
+  @@index([machineId])
+}
+
+model MaintenanceWorkOrder {
+  id                    Int                    @id @default(autoincrement())
+  workOrderNo           String                 @unique
+  machineId             Int
+  maintenanceScheduleId Int?
+  status                MaintenanceStatus      @default(PLANNED)
+  priority              PriorityLevel          @default(MEDIUM)
+  description           String?
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  machine               Machine                @relation(fields: [machineId], references: [id])
+  maintenanceSchedule   MaintenanceSchedule?   @relation(fields: [maintenanceScheduleId], references: [id])
+  sparePartConsumptions SparePartConsumption[]
+
+  @@index([workOrderNo])
+  @@index([machineId])
+}
+
+model BreakdownLog {
+  id          Int       @id @default(autoincrement())
+  machineId   Int
+  breakdownAt DateTime
+  resolvedAt  DateTime?
+  description String?
+  cause       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  machine     Machine   @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+  @@index([breakdownAt])
+}
+
+model SparePart {
+  id           Int                    @id @default(autoincrement())
+  code         String                 @unique
+  name         String
+  itemId       Int?
+  description  String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  item         Item?                  @relation(fields: [itemId], references: [id])
+  consumptions SparePartConsumption[]
+}
+
+model SparePartConsumption {
+  id                     Int                  @id @default(autoincrement())
+  maintenanceWorkOrderId Int
+  sparePartId            Int
+  quantity               Decimal
+  consumedAt             DateTime
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  workOrder              MaintenanceWorkOrder @relation(fields: [maintenanceWorkOrderId], references: [id])
+  sparePart              SparePart            @relation(fields: [sparePartId], references: [id])
+
+  @@index([maintenanceWorkOrderId])
+  @@index([sparePartId])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+}
+
+model SystemLog {
+  id        Int      @id @default(autoincrement())
+  level     LogLevel @default(INFO)
+  message   String
+  context   String?
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([level])
+  @@index([timestamp])
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String   @unique
+  email     String?
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
 
 enum UserStatus {
   ACTIVE
@@ -151,1221 +1328,19 @@ enum LogLevel {
   DEBUG
 }
 
-//
-// 1. USERS & AUTHENTICATION
-//
-
-model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
-  passwordHash String?
-  firstName    String
-  lastName     String
-  status       UserStatus   @default(ACTIVE)
-  provider     AuthProvider @default(LOCAL)
-  lastLoginAt  DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  companyId    String?
-  company      Company?     @relation(fields: [companyId], references: [id])
-
-  baseRole        String    @default("Local User")
-  department      String?
-  designation     String?
-  managerId       String?
-  manager         User?     @relation("Reporting", fields: [managerId], references: [id])
-  team            User[]    @relation("Reporting")
-  canCreateMaster Boolean   @default(false)
-  failedLogins    Int       @default(0)
-  lockedUntil     DateTime?
-
-  userRoles              UserRole[]
-  auditLogs              AuditLog[]
-  purchaseOrdersCreated  PurchaseOrder[]
-  productionPlansCreated ProductionPlan[]
-
-  @@index([email])
-  @@index([companyId])
-}
-
-model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userRoles             UserRole[]
-  rolePerms             RolePermission[]
-  baseRole              String                 @default("Local User")
-  isSystem              Boolean                @default(false)
-  roleScreenPermissions RoleScreenPermission[]
-}
-
-model Permission {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  rolePerms RolePermission[]
-}
-
-model UserRole {
-  id        String   @id @default(uuid())
-  userId    String
-  roleId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
-  role Role @relation(fields: [roleId], references: [id])
-
-  @@unique([userId, roleId])
-  @@index([userId])
-  @@index([roleId])
-}
-
-model RolePermission {
-  id           String   @id @default(uuid())
-  roleId       String
-  permissionId String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  role       Role       @relation(fields: [roleId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
-
-  @@unique([roleId, permissionId])
-  @@index([roleId])
-  @@index([permissionId])
-}
-
-//
-// 2. PROCUREMENT
-//
-
-model Supplier {
-  id           String   @id @default(uuid())
-  code         String   @unique
-  name         String
-  contactName  String?
-  email        String?
-  phone        String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String?
-  paymentTerms String?
-  taxNumber    String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  purchaseRequisitions PurchaseRequisition[]
-  purchaseOrders       PurchaseOrder[]
-  supplierInvoices     SupplierInvoice[]
-  payments             Payment[]
-
-  @@index([code])
-  @@index([name])
-}
-
-model PurchaseRequisition {
-  id            String                    @id @default(uuid())
-  requisitionNo String                    @unique
-  requestedById String?
-  supplierId    String?
-  status        PurchaseRequisitionStatus @default(DRAFT)
-  requiredDate  DateTime?
-  notes         String?
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
-
-  requestedBy Employee?                 @relation(fields: [requestedById], references: [id])
-  supplier    Supplier?                 @relation(fields: [supplierId], references: [id])
-  items       PurchaseRequisitionItem[]
-
-  @@index([requisitionNo])
-  @@index([supplierId])
-  @@index([requestedById])
-}
-
-model PurchaseRequisitionItem {
-  id                    String    @id @default(uuid())
-  purchaseRequisitionId String
-  itemId                String
-  quantity              Decimal
-  unitPrice             Decimal?
-  requiredDate          DateTime?
-  notes                 String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  requisition PurchaseRequisition @relation(fields: [purchaseRequisitionId], references: [id])
-  item        Item                @relation(fields: [itemId], references: [id])
-
-  @@index([purchaseRequisitionId])
-  @@index([itemId])
-}
-
-model PurchaseOrder {
-  id           String              @id @default(uuid())
-  orderNo      String              @unique
-  supplierId   String
-  orderDate    DateTime
-  expectedDate DateTime?
-  status       PurchaseOrderStatus @default(DRAFT)
-  currency     String              @default("USD")
-  totalAmount  Decimal
-  notes        String?
-  createdById  String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-
-  supplier         Supplier            @relation(fields: [supplierId], references: [id])
-  createdBy        User?               @relation(fields: [createdById], references: [id])
-  items            PurchaseOrderItem[]
-  goodsReceipts    GoodsReceipt[]
-  supplierInvoices SupplierInvoice[]
-
-  @@index([orderNo])
-  @@index([supplierId])
-}
-
-model PurchaseOrderItem {
-  id              String   @id @default(uuid())
-  purchaseOrderId String
-  itemId          String
-  quantity        Decimal
-  receivedQty     Decimal  @default(0)
-  unitPrice       Decimal
-  taxRate         Decimal?
-  discount        Decimal?
-  lineTotal       Decimal
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
-
-  @@index([purchaseOrderId])
-  @@index([itemId])
-}
-
-model GoodsReceipt {
-  id              String             @id @default(uuid())
-  grnNo           String             @unique
-  purchaseOrderId String
-  receivedDate    DateTime
-  status          GoodsReceiptStatus @default(PENDING)
-  receivedById    String?
-  notes           String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
-  purchaseOrder  PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
-  receivedBy     Employee?          @relation(fields: [receivedById], references: [id])
-  items          GoodsReceiptItem[]
-  stockMovements StockMovement[]
-
-  @@index([grnNo])
-  @@index([purchaseOrderId])
-}
-
-model GoodsReceiptItem {
-  id             String   @id @default(uuid())
-  goodsReceiptId String
-  itemId         String
-  warehouseId    String
-  locationId     String?
-  batchId        String?
-  quantity       Decimal
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  goodsReceipt GoodsReceipt       @relation(fields: [goodsReceiptId], references: [id])
-  item         Item               @relation(fields: [itemId], references: [id])
-  warehouse    Warehouse          @relation(fields: [warehouseId], references: [id])
-  location     WarehouseLocation? @relation(fields: [locationId], references: [id])
-  batch        Batch?             @relation(fields: [batchId], references: [id])
-
-  @@index([goodsReceiptId])
-  @@index([itemId])
-  @@index([warehouseId])
-  @@index([batchId])
-}
-
-model SupplierInvoice {
-  id              String        @id @default(uuid())
-  invoiceNo       String        @unique
-  supplierId      String
-  purchaseOrderId String?
-  invoiceDate     DateTime
-  dueDate         DateTime?
-  status          InvoiceStatus @default(DRAFT)
-  totalAmount     Decimal
-  currency        String        @default("USD")
-  notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  supplier      Supplier       @relation(fields: [supplierId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-
-  @@index([invoiceNo])
-  @@index([supplierId])
-}
-
-//
-// 3. INVENTORY
-//
-
-model ItemCategory {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  parentId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  parent   ItemCategory?  @relation("ItemCategoryToParent", fields: [parentId], references: [id])
-  children ItemCategory[] @relation("ItemCategoryToParent")
-  items    Item[]
-
-  @@index([code])
-}
-
-model Item {
-  id             String   @id @default(uuid())
-  sku            String   @unique
-  name           String
-  description    String?
-  categoryId     String?
-  uom            String
-  isBatchManaged Boolean  @default(false)
-  isActive       Boolean  @default(true)
-  minStockLevel  Decimal?
-  maxStockLevel  Decimal?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  category             ItemCategory?             @relation(fields: [categoryId], references: [id])
-  stock                Stock[]
-  stockMovements       StockMovement[]
-  batches              Batch[]
-  requisitionItems     PurchaseRequisitionItem[]
-  purchaseOrderItems   PurchaseOrderItem[]
-  goodsReceiptItems    GoodsReceiptItem[]
-  salesOrderItems      SalesOrderItem[]
-  quotationItems       QuotationItem[]
-  materialConsumptions MaterialConsumption[]
-  machineOutputs       MachineOutput[]
-  wasteEntries         WasteEntry[]
-  reels                Reel[]
-  spareParts           SparePart[]
-  productionOrders     ProductionOrder[]
-  stockTransfers       StockTransfer[]
-
-  @@index([sku])
-  @@index([name])
-}
-
-model Warehouse {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  address   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  locations            WarehouseLocation[]
-  stock                Stock[]
-  stockMovements       StockMovement[]
-  stockTransfersFrom   StockTransfer[]       @relation("StockTransferFromWarehouse")
-  stockTransfersTo     StockTransfer[]       @relation("StockTransferToWarehouse")
-  goodsReceiptItems    GoodsReceiptItem[]
-  materialConsumptions MaterialConsumption[]
-  machineOutputs       MachineOutput[]
-}
-
-model WarehouseLocation {
-  id          String   @id @default(uuid())
-  warehouseId String
-  code        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  warehouse            Warehouse             @relation(fields: [warehouseId], references: [id])
-  stock                Stock[]
-  stockMovements       StockMovement[]
-  stockTransfersFrom   StockTransfer[]       @relation("StockTransferFromLocation")
-  stockTransfersTo     StockTransfer[]       @relation("StockTransferToLocation")
-  goodsReceiptItems    GoodsReceiptItem[]
-  materialConsumptions MaterialConsumption[]
-  machineOutputs       MachineOutput[]
-
-  @@unique([warehouseId, code])
-  @@index([warehouseId])
-}
-
-model Stock {
-  id          String   @id @default(uuid())
-  itemId      String
-  warehouseId String
-  locationId  String?
-  batchId     String?
-  quantity    Decimal
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  item      Item               @relation(fields: [itemId], references: [id])
-  warehouse Warehouse          @relation(fields: [warehouseId], references: [id])
-  location  WarehouseLocation? @relation(fields: [locationId], references: [id])
-  batch     Batch?             @relation(fields: [batchId], references: [id])
-
-  @@unique([itemId, warehouseId, locationId, batchId])
-  @@index([itemId])
-  @@index([warehouseId])
-}
-
-model StockMovement {
-  id                String            @id @default(uuid())
-  movementNo        String            @unique
-  itemId            String
-  warehouseId       String
-  locationId        String?
-  batchId           String?
-  quantity          Decimal
-  movementType      StockMovementType
-  referenceType     String?
-  referenceId       String?
-  goodsReceiptId    String?
-  productionOrderId String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  item            Item               @relation(fields: [itemId], references: [id])
-  warehouse       Warehouse          @relation(fields: [warehouseId], references: [id])
-  location        WarehouseLocation? @relation(fields: [locationId], references: [id])
-  batch           Batch?             @relation(fields: [batchId], references: [id])
-  goodsReceipt    GoodsReceipt?      @relation(fields: [goodsReceiptId], references: [id])
-  productionOrder ProductionOrder?   @relation(fields: [productionOrderId], references: [id])
-
-  @@index([itemId])
-  @@index([warehouseId])
-  @@index([movementType])
-}
-
-model StockTransfer {
-  id              String   @id @default(uuid())
-  transferNo      String   @unique
-  fromWarehouseId String
-  fromLocationId  String?
-  toWarehouseId   String
-  toLocationId    String?
-  itemId          String
-  batchId         String?
-  quantity        Decimal
-  transferDate    DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  fromWarehouse Warehouse          @relation("StockTransferFromWarehouse", fields: [fromWarehouseId], references: [id])
-  toWarehouse   Warehouse          @relation("StockTransferToWarehouse", fields: [toWarehouseId], references: [id])
-  fromLocation  WarehouseLocation? @relation("StockTransferFromLocation", fields: [fromLocationId], references: [id])
-  toLocation    WarehouseLocation? @relation("StockTransferToLocation", fields: [toLocationId], references: [id])
-  item          Item               @relation(fields: [itemId], references: [id])
-  batch         Batch?             @relation(fields: [batchId], references: [id])
-
-  @@index([fromWarehouseId])
-  @@index([toWarehouseId])
-  @@index([itemId])
-}
-
-model Batch {
-  id              String    @id @default(uuid())
-  batchNo         String
-  itemId          String
-  manufactureDate DateTime?
-  expiryDate      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  item                 Item                  @relation(fields: [itemId], references: [id])
-  stock                Stock[]
-  stockMovements       StockMovement[]
-  stockTransfers       StockTransfer[]
-  goodsReceiptItems    GoodsReceiptItem[]
-  materialConsumptions MaterialConsumption[]
-  machineOutputs       MachineOutput[]
-
-  @@unique([itemId, batchNo])
-  @@index([itemId])
-  @@index([batchNo])
-}
-
-//
-// 4. PRODUCTION
-//
-
-model Machine {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  location    String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  productionOrders      ProductionOrder[]
-  productionLogs        ProductionLog[]
-  machineOutputs        MachineOutput[]
-  wasteEntries          WasteEntry[]
-  reels                 Reel[]
-  maintenanceSchedules  MaintenanceSchedule[]
-  maintenanceWorkOrders MaintenanceWorkOrder[]
-  breakdownLogs         BreakdownLog[]
-}
-
-model ProductionPlan {
-  id          String    @id @default(uuid())
-  planNo      String    @unique
-  planDate    DateTime
-  startDate   DateTime?
-  endDate     DateTime?
-  createdById String?
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  createdBy        User?             @relation(fields: [createdById], references: [id])
-  productionOrders ProductionOrder[]
-
-  @@index([planNo])
-}
-
-model ProductionOrder {
-  id               String                @id @default(uuid())
-  orderNo          String                @unique
-  productionPlanId String?
-  salesOrderId     String?
-  itemId           String
-  machineId        String?
-  plannedQty       Decimal
-  producedQty      Decimal               @default(0)
-  status           ProductionOrderStatus @default(PLANNED)
-  startDate        DateTime?
-  endDate          DateTime?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-
-  productionPlan       ProductionPlan?       @relation(fields: [productionPlanId], references: [id])
-  salesOrder           SalesOrder?           @relation(fields: [salesOrderId], references: [id])
-  item                 Item                  @relation(fields: [itemId], references: [id])
-  machine              Machine?              @relation(fields: [machineId], references: [id])
-  logs                 ProductionLog[]
-  materialConsumptions MaterialConsumption[]
-  machineOutputs       MachineOutput[]
-  wasteEntries         WasteEntry[]
-  reels                Reel[]
-  stockMovements       StockMovement[]
-
-  @@index([orderNo])
-  @@index([itemId])
-  @@index([status])
-}
-
-model ProductionLog {
-  id                String    @id @default(uuid())
-  productionOrderId String
-  machineId         String?
-  startTime         DateTime
-  endTime           DateTime?
-  notes             String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id])
-  machine         Machine?        @relation(fields: [machineId], references: [id])
-
-  @@index([productionOrderId])
-  @@index([machineId])
-}
-
-model MaterialConsumption {
-  id                String   @id @default(uuid())
-  productionOrderId String
-  itemId            String
-  warehouseId       String
-  locationId        String?
-  batchId           String?
-  quantity          Decimal
-  consumptionDate   DateTime
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  productionOrder ProductionOrder    @relation(fields: [productionOrderId], references: [id])
-  item            Item               @relation(fields: [itemId], references: [id])
-  warehouse       Warehouse          @relation(fields: [warehouseId], references: [id])
-  location        WarehouseLocation? @relation(fields: [locationId], references: [id])
-  batch           Batch?             @relation(fields: [batchId], references: [id])
-
-  @@index([productionOrderId])
-  @@index([itemId])
-}
-
-model MachineOutput {
-  id                String   @id @default(uuid())
-  productionOrderId String
-  itemId            String
-  machineId         String?
-  warehouseId       String
-  locationId        String?
-  batchId           String?
-  quantity          Decimal
-  outputDate        DateTime
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  productionOrder ProductionOrder    @relation(fields: [productionOrderId], references: [id])
-  item            Item               @relation(fields: [itemId], references: [id])
-  machine         Machine?           @relation(fields: [machineId], references: [id])
-  warehouse       Warehouse          @relation(fields: [warehouseId], references: [id])
-  location        WarehouseLocation? @relation(fields: [locationId], references: [id])
-  batch           Batch?             @relation(fields: [batchId], references: [id])
-
-  @@index([productionOrderId])
-  @@index([itemId])
-}
-
-model WasteEntry {
-  id                String   @id @default(uuid())
-  productionOrderId String?
-  itemId            String?
-  machineId         String?
-  reason            String?
-  quantity          Decimal
-  entryDate         DateTime
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  productionOrder ProductionOrder? @relation(fields: [productionOrderId], references: [id])
-  item            Item?            @relation(fields: [itemId], references: [id])
-  machine         Machine?         @relation(fields: [machineId], references: [id])
-
-  @@index([productionOrderId])
-}
-
-model Reel {
-  id                String   @id @default(uuid())
-  reelNo            String   @unique
-  productionOrderId String?
-  machineId         String?
-  itemId            String?
-  length            Decimal?
-  weight            Decimal?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  productionOrder ProductionOrder? @relation(fields: [productionOrderId], references: [id])
-  machine         Machine?         @relation(fields: [machineId], references: [id])
-  item            Item?            @relation(fields: [itemId], references: [id])
-
-  @@index([reelNo])
-}
-
-//
-// 5. SALES
-//
-
-model Customer {
-  id           String   @id @default(uuid())
-  code         String   @unique
-  name         String
-  contactName  String?
-  email        String?
-  phone        String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String?
-  taxNumber    String?
-  paymentTerms String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  quotations  Quotation[]
-  salesOrders SalesOrder[]
-  deliveries  Delivery[]
-  invoices    Invoice[]
-  payments    Payment[]
-
-  @@index([code])
-  @@index([name])
-}
-
-model Quotation {
-  id          String    @id @default(uuid())
-  quoteNo     String    @unique
-  customerId  String
-  quoteDate   DateTime
-  validUntil  DateTime?
-  status      String?
-  currency    String    @default("USD")
-  totalAmount Decimal
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  customer    Customer        @relation(fields: [customerId], references: [id])
-  items       QuotationItem[]
-  salesOrders SalesOrder[]
-
-  @@index([quoteNo])
-  @@index([customerId])
-}
-
-model QuotationItem {
-  id          String   @id @default(uuid())
-  quotationId String
-  itemId      String
-  quantity    Decimal
-  unitPrice   Decimal
-  discount    Decimal?
-  lineTotal   Decimal
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  quotation Quotation @relation(fields: [quotationId], references: [id])
-  item      Item      @relation(fields: [itemId], references: [id])
-
-  @@index([quotationId])
-  @@index([itemId])
-}
-
-model SalesOrder {
-  id          String           @id @default(uuid())
-  orderNo     String           @unique
-  customerId  String
-  quotationId String?
-  orderDate   DateTime
-  status      SalesOrderStatus @default(DRAFT)
-  currency    String           @default("USD")
-  totalAmount Decimal
-  notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  customer         Customer          @relation(fields: [customerId], references: [id])
-  quotation        Quotation?        @relation(fields: [quotationId], references: [id])
-  items            SalesOrderItem[]
-  deliveries       Delivery[]
-  invoices         Invoice[]
-  productionOrders ProductionOrder[]
-
-  @@index([orderNo])
-  @@index([customerId])
-  @@index([status])
-}
-
-model SalesOrderItem {
-  id           String   @id @default(uuid())
-  salesOrderId String
-  itemId       String
-  quantity     Decimal
-  deliveredQty Decimal  @default(0)
-  unitPrice    Decimal
-  discount     Decimal?
-  lineTotal    Decimal
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id])
-  item       Item       @relation(fields: [itemId], references: [id])
-
-  @@index([salesOrderId])
-  @@index([itemId])
-}
-
-model Delivery {
-  id                 String         @id @default(uuid())
-  deliveryNo         String         @unique
-  customerId         String?
-  salesOrderId       String?
-  dispatchScheduleId String?
-  status             DeliveryStatus @default(PLANNED)
-  deliveryDate       DateTime?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-
-  customer         Customer?         @relation(fields: [customerId], references: [id])
-  salesOrder       SalesOrder?       @relation(fields: [salesOrderId], references: [id])
-  dispatchSchedule DispatchSchedule? @relation(fields: [dispatchScheduleId], references: [id])
-  shipments        Shipment[]
-  invoices         Invoice[]
-
-  @@index([deliveryNo])
-  @@index([customerId])
-}
-
-model Shipment {
-  id         String         @id @default(uuid())
-  shipmentNo String         @unique
-  deliveryId String
-  vehicleId  String?
-  driverId   String?
-  shipDate   DateTime
-  status     DeliveryStatus @default(IN_TRANSIT)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-
-  delivery Delivery @relation(fields: [deliveryId], references: [id])
-  vehicle  Vehicle? @relation(fields: [vehicleId], references: [id])
-  driver   Driver?  @relation(fields: [driverId], references: [id])
-
-  @@index([shipmentNo])
-  @@index([deliveryId])
-}
-
-model Invoice {
-  id           String        @id @default(uuid())
-  invoiceNo    String        @unique
-  customerId   String
-  salesOrderId String?
-  deliveryId   String?
-  invoiceDate  DateTime
-  dueDate      DateTime?
-  status       InvoiceStatus @default(DRAFT)
-  totalAmount  Decimal
-  currency     String        @default("USD")
-  notes        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  customer   Customer    @relation(fields: [customerId], references: [id])
-  salesOrder SalesOrder? @relation(fields: [salesOrderId], references: [id])
-  delivery   Delivery?   @relation(fields: [deliveryId], references: [id])
-  payments   Payment[]
-
-  @@index([invoiceNo])
-  @@index([customerId])
-}
-
-model Payment {
-  id            String        @id @default(uuid())
-  paymentNo     String        @unique
-  customerId    String?
-  supplierId    String?
-  invoiceId     String?
-  amount        Decimal
-  paymentDate   DateTime
-  status        PaymentStatus @default(PENDING)
-  method        String?
-  bankAccountId String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  customer    Customer?    @relation(fields: [customerId], references: [id])
-  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
-  invoice     Invoice?     @relation(fields: [invoiceId], references: [id])
-  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
-
-  @@index([paymentNo])
-  @@index([customerId])
-  @@index([supplierId])
-}
-
-//
-// 6. LOGISTICS
-//
-
-model Vehicle {
-  id             String   @id @default(uuid())
-  registrationNo String   @unique
-  type           String?
-  capacity       Decimal?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  dispatchSchedules DispatchSchedule[]
-  shipments         Shipment[]
-}
-
-model Driver {
-  id         String   @id @default(uuid())
-  employeeId String?  @unique
-  name       String
-  phone      String?
-  licenseNo  String?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  employee          Employee?          @relation(fields: [employeeId], references: [id])
-  dispatchSchedules DispatchSchedule[]
-  shipments         Shipment[]
-}
-
-model DispatchSchedule {
-  id          String         @id @default(uuid())
-  scheduleNo  String         @unique
-  vehicleId   String?
-  driverId    String?
-  plannedDate DateTime
-  status      DispatchStatus @default(PLANNED)
-  notes       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  vehicle    Vehicle?   @relation(fields: [vehicleId], references: [id])
-  driver     Driver?    @relation(fields: [driverId], references: [id])
-  deliveries Delivery[]
-
-  @@index([scheduleNo])
-}
-
-//
-// 7. HR
-//
-
-model Department {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  employees   Employee[]
-  costCenters CostCenter[]
-}
-
-model Employee {
-  id           String    @id @default(uuid())
-  employeeNo   String    @unique
-  firstName    String
-  lastName     String
-  departmentId String?
-  email        String?
-  phone        String?
-  hireDate     DateTime?
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  department    Department?    @relation(fields: [departmentId], references: [id])
-  attendances   Attendance[]
-  salarySlips   SalarySlip[]
-  driver        Driver?
-  goodsReceipts GoodsReceipt[]
-
-  purchaseRequisitions PurchaseRequisition[]
-}
-
-model Attendance {
-  id         String           @id @default(uuid())
-  employeeId String
-  date       DateTime
-  checkIn    DateTime?
-  checkOut   DateTime?
-  status     AttendanceStatus @default(PRESENT)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-
-  employee Employee @relation(fields: [employeeId], references: [id])
-
-  @@unique([employeeId, date])
-  @@index([employeeId])
-}
-
-model Shift {
-  id        String    @id @default(uuid())
-  name      String
-  type      ShiftType
-  startTime String
-  endTime   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Payroll {
-  id          String    @id @default(uuid())
-  periodStart DateTime
-  periodEnd   DateTime
-  processedOn DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  salarySlips SalarySlip[]
-}
-
-model SalarySlip {
-  id          String    @id @default(uuid())
-  payrollId   String?
-  employeeId  String
-  grossSalary Decimal
-  netSalary   Decimal
-  deductions  Decimal?
-  allowances  Decimal?
-  payDate     DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  payroll  Payroll? @relation(fields: [payrollId], references: [id])
-  employee Employee @relation(fields: [employeeId], references: [id])
-
-  @@index([employeeId])
-}
-
-//
-// 8. FINANCE
-//
-
-model Account {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  type      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  journalLines JournalLine[]
-  bankAccounts BankAccount[]
-}
-
-model CostCenter {
-  id           String   @id @default(uuid())
-  code         String   @unique
-  name         String
-  departmentId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  department   Department?   @relation(fields: [departmentId], references: [id])
-  journalLines JournalLine[]
-}
-
-model JournalEntry {
-  id        String           @id @default(uuid())
-  entryNo   String           @unique
-  entryDate DateTime
-  type      JournalEntryType @default(GENERAL)
-  reference String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  lines                 JournalLine[]
-  financialTransactions FinancialTransaction[]
-
-  @@index([entryDate])
-}
-
-model JournalLine {
-  id             String   @id @default(uuid())
-  journalEntryId String
-  accountId      String
-  costCenterId   String?
-  debit          Decimal  @default(0)
-  credit         Decimal  @default(0)
-  description    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
-  account      Account      @relation(fields: [accountId], references: [id])
-  costCenter   CostCenter?  @relation(fields: [costCenterId], references: [id])
-
-  @@index([journalEntryId])
-  @@index([accountId])
-}
-
-model BankAccount {
-  id            String   @id @default(uuid())
-  bankName      String
-  accountNumber String   @unique
-  accountName   String
-  accountId     String?
-  currency      String   @default("USD")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  account      Account?               @relation(fields: [accountId], references: [id])
-  transactions FinancialTransaction[]
-  payments     Payment[]
-}
-
-model FinancialTransaction {
-  id              String                   @id @default(uuid())
-  bankAccountId   String
-  journalEntryId  String?
-  transactionDate DateTime
-  amount          Decimal
-  type            FinancialTransactionType
-  reference       String?
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-
-  bankAccount  BankAccount   @relation(fields: [bankAccountId], references: [id])
-  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
-
-  @@index([bankAccountId])
-  @@index([transactionDate])
-}
-
-//
-// 9. MAINTENANCE
-//
-
-model MaintenanceSchedule {
-  id          String            @id @default(uuid())
-  machineId   String
-  scheduleNo  String            @unique
-  plannedDate DateTime
-  status      MaintenanceStatus @default(PLANNED)
-  priority    PriorityLevel     @default(MEDIUM)
-  description String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  machine    Machine                @relation(fields: [machineId], references: [id])
-  workOrders MaintenanceWorkOrder[]
-
-  @@index([machineId])
-}
-
-model MaintenanceWorkOrder {
-  id                    String            @id @default(uuid())
-  workOrderNo           String            @unique
-  machineId             String
-  maintenanceScheduleId String?
-  status                MaintenanceStatus @default(PLANNED)
-  priority              PriorityLevel     @default(MEDIUM)
-  description           String?
-  startDate             DateTime?
-  endDate               DateTime?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-
-  machine               Machine                @relation(fields: [machineId], references: [id])
-  maintenanceSchedule   MaintenanceSchedule?   @relation(fields: [maintenanceScheduleId], references: [id])
-  sparePartConsumptions SparePartConsumption[]
-
-  @@index([workOrderNo])
-  @@index([machineId])
-}
-
-model BreakdownLog {
-  id          String    @id @default(uuid())
-  machineId   String
-  breakdownAt DateTime
-  resolvedAt  DateTime?
-  description String?
-  cause       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  machine Machine @relation(fields: [machineId], references: [id])
-
-  @@index([machineId])
-  @@index([breakdownAt])
-}
-
-model SparePart {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  itemId      String?
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  item         Item?                  @relation(fields: [itemId], references: [id])
-  consumptions SparePartConsumption[]
-}
-
-model SparePartConsumption {
-  id                     String   @id @default(uuid())
-  maintenanceWorkOrderId String
-  sparePartId            String
-  quantity               Decimal
-  consumedAt             DateTime
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-
-  workOrder MaintenanceWorkOrder @relation(fields: [maintenanceWorkOrderId], references: [id])
-  sparePart SparePart            @relation(fields: [sparePartId], references: [id])
-
-  @@index([maintenanceWorkOrderId])
-  @@index([sparePartId])
-}
-
-//
-// 10. REPORTING & AUDIT
-//
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  details   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User? @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([entity, entityId])
-}
-
-model SystemLog {
-  id        String   @id @default(uuid())
-  level     LogLevel @default(INFO)
-  message   String
-  context   String?
-  timestamp DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([level])
-  @@index([timestamp])
-}
-
-model Company {
-  users     User[]
-  id        String   @id @default(uuid())
-  name      String
-  code      String   @unique
-  email     String?
-  phone     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 model RoleScreenPermission {
-  id          String  @id @default(uuid())
-  roleId      String
-  role        Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id          Int      @id @default(autoincrement())
+  roleId      Int
   screenLabel String
-  canAccess   Boolean @default(false)
-  canView     Boolean @default(false)
-  canCreate   Boolean @default(false)
-  canEdit     Boolean @default(false)
-  canDelete   Boolean @default(false)
+  canAccess   Boolean  @default(false)
+  canView     Boolean  @default(false)
+  canCreate   Boolean  @default(false)
+  canEdit     Boolean  @default(false)
+  canDelete   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, screenLabel])
   @@index([roleId])
