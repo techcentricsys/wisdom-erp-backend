@@ -4,9 +4,10 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AccessModule } from './access/access.module.js';
 import { MasterAccountsModule } from './master-accounts/master-accounts.module.js';
+import { InquiryModule } from './modules/inquiry/inquiry.module.js';
 
 @Module({
-  imports: [AuthModule, AccessModule, MasterAccountsModule],
+  imports: [AuthModule, AccessModule, MasterAccountsModule, InquiryModule],
   controllers: [AppController],
   providers: [AppService],
 })
