@@ -21,6 +21,6 @@ import { IndentsService } from './indents.service.js';
     PrismaService,
     AccessGuard,
   ],
-  exports: [IndentsService],
+  exports: [IndentsService, IndentsAccess],
 })
 export class IndentsModule {}

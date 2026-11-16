@@ -316,47 +316,74 @@ model PurchaseRequisitionItem {
 }
 
 model PurchaseOrder {
-  id           String              @id @default(uuid())
-  orderNo      String              @unique
-  supplierId   String
-  orderDate    DateTime
-  expectedDate DateTime?
-  status       PurchaseOrderStatus @default(DRAFT)
-  currency     String              @default("USD")
-  totalAmount  Decimal
-  notes        String?
-  createdById  String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id                String              @id @default(uuid())
+  orderNo           String              @unique
+  supplierId        String?
+  supplierAccountId String?
+  supplierName      String              @default("")
+  indentNo          String?
+  orderDate         DateTime
+  expectedDate      DateTime?
+  cancelDate        String?
+  status            PurchaseOrderStatus @default(DRAFT)
+  currency          String              @default("USD")
+  totalAmount       Decimal             @default(0)
+  customer          String?
+  salesperson       String?
+  commercialPerson  String?
+  refNo             String?
+  incoterm          String?
+  portLoading       String?
+  portDestination   String?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  supplier         Supplier            @relation(fields: [supplierId], references: [id])
-  createdBy        User?               @relation(fields: [createdById], references: [id])
+  supplier         Supplier?            @relation(fields: [supplierId], references: [id])
+  supplierAccount  MasterAccount?       @relation(fields: [supplierAccountId], references: [id])
+  indent           Indent?              @relation(fields: [indentNo], references: [no], onDelete: Restrict)
+  createdBy        User?                @relation(fields: [createdById], references: [id])
   items            PurchaseOrderItem[]
   goodsReceipts    GoodsReceipt[]
   supplierInvoices SupplierInvoice[]
 
   @@index([orderNo])
+  @@index([indentNo])
   @@index([supplierId])
+  @@index([supplierAccountId])
+  @@index([status])
+  @@index([createdById])
 }
 
 model PurchaseOrderItem {
   id              String   @id @default(uuid())
   purchaseOrderId String
-  itemId          String
+  itemId          String?
+  indentItemId    String?
+  productName     String   @default("")
+  category        String?
+  description     String?
+  indentQty       Decimal?
+  unit            String?
   quantity        Decimal
   receivedQty     Decimal  @default(0)
   unitPrice       Decimal
   taxRate         Decimal?
   discount        Decimal?
   lineTotal       Decimal
+  packing         String?
+  manufacturer    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  item          Item?         @relation(fields: [itemId], references: [id])
+  indentItem    IndentItem?   @relation(fields: [indentItemId], references: [id])
 
   @@index([purchaseOrderId])
   @@index([itemId])
+  @@index([indentItemId])
 }
 
 model GoodsReceipt {
@@ -1409,6 +1436,7 @@ model MasterAccount {
   @@unique([type, name])
   @@index([type])
   @@index([createdBy])
+  purchaseOrders PurchaseOrder[]
 }
 
 model BankDetail {
@@ -1543,6 +1571,7 @@ model Indent {
   @@index([status])
   @@index([poStatus])
   @@index([createdBy])
+  purchaseOrders PurchaseOrder[]
 }
 
 model IndentItem {
@@ -1563,6 +1592,6 @@ model IndentItem {
   packing       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   @@index([indentNo])
+  purchaseOrderItems PurchaseOrderItem[]
 }
