@@ -5,9 +5,16 @@ import { AuthModule } from './auth/auth.module.js';
 import { AccessModule } from './access/access.module.js';
 import { MasterAccountsModule } from './master-accounts/master-accounts.module.js';
 import { OffersModule } from './offers/offers.module.js';
+import { IndentsModule } from './indents/indents.module.js';
 
 @Module({
-  imports: [AuthModule, AccessModule, MasterAccountsModule, OffersModule],
+  imports: [
+    AuthModule,
+    AccessModule,
+    MasterAccountsModule,
+    OffersModule,
+    IndentsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
