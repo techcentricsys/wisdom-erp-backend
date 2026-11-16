@@ -185,6 +185,7 @@ model User {
   productionPlansCreated ProductionPlan[]
   masterAccountsCreated  MasterAccount[]
   offersCreated          Offer[]
+  indentsCreated         Indent[]
 
   @@index([email])
   @@index([companyId])
@@ -1494,4 +1495,74 @@ model OfferItem {
   updatedAt    DateTime @updatedAt
 
   @@index([offerNo])
+}
+
+model Indent {
+  id               String       @id @default(uuid())
+  no               String       @unique
+  indentDate       String
+  validityDate     String
+  offerNo          String
+  offerDate        String?
+  refNo            String?
+  customer         String
+  customerId       String?
+  supplier         String
+  supplierId       String?
+  salesperson      String?
+  salespersonId    String?
+  commercialPerson String?
+  portLoading      String?
+  portDestination  String?
+  currency         String       @default("US DOLLAR")
+  incoterm         String?
+  insurance        String?
+  shippingAgent    String?
+  shippingMark     String?
+  partialShipment  String       @default("Allowed")
+  transShipment    String       @default("Allowed")
+  shipmentPeriod   String?
+  bankType         String       @default("Bank")
+  specialNote      String?
+  instruction      String?
+  remarks          String?
+  checklist        Json?
+  printWithLogo    Boolean      @default(false)
+  status           String       @default("Active")
+  cancelDate       String?
+  poStatus         String       @default("PO Pending")
+  shipStatus       String       @default("Not Shipped")
+  createdBy        String?
+  creator          User?        @relation(fields: [createdBy], references: [id])
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  items IndentItem[]
+
+  @@index([offerNo])
+  @@index([status])
+  @@index([poStatus])
+  @@index([createdBy])
+}
+
+model IndentItem {
+  id            String   @id @default(uuid())
+  indentNo      String
+  indent        Indent   @relation(fields: [indentNo], references: [no], onDelete: Cascade)
+  productId     String?
+  product       String
+  category      String?
+  description   String?
+  quantity      Decimal
+  unit          String
+  rate          Decimal
+  commissionPct Decimal  @default(0)
+  shippingMode  String?
+  paymentTerm   String?
+  manufacturer  String?
+  packing       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([indentNo])
 }
