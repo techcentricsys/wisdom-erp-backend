@@ -10,6 +10,7 @@ import { IndentsModule } from './indents/indents.module.js';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
 import { ShipmentsModule } from './shipments/shipments.module.js';
 import { SamplesModule } from './samples/samples.module.js';
+import { SetupMastersModule } from './setup-masters/setup-masters.module.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SamplesModule } from './samples/samples.module.js';
     PurchaseOrdersModule,
     ShipmentsModule,
     SamplesModule,
+    SetupMastersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
