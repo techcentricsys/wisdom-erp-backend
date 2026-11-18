@@ -151,6 +151,12 @@ enum LogLevel {
   DEBUG
 }
 
+enum CustomerInquiryStatus {
+  OPEN
+  OFFERED
+  CANCELLED
+}
+
 //
 // 1. USERS & AUTHENTICATION
 //
@@ -181,9 +187,12 @@ model User {
 
   userRoles              UserRole[]
   auditLogs              AuditLog[]
-  purchaseOrdersCreated  PurchaseOrder[]
-  productionPlansCreated ProductionPlan[]
+  purchaseOrdersCreated    PurchaseOrder[]
+  productionPlansCreated   ProductionPlan[]
   masterAccountsCreated    MasterAccount[]
+  inquiriesCreated         CustomerInquiry[]  @relation("InquiryCreatedBy")
+  inquiriesAsSalesperson   CustomerInquiry[]  @relation("InquirySalesperson")
+  inquiriesAsCommercial    CustomerInquiry[]  @relation("InquiryCommercialPerson")
   offersCreated            Offer[]
   indentsCreated           Indent[]
   tradeShipmentsCreated    TradeShipment[]
@@ -276,6 +285,7 @@ model Supplier {
   purchaseOrders       PurchaseOrder[]
   supplierInvoices     SupplierInvoice[]
   payments             Payment[]
+  inquiryRateSheets    SupplierRateSheet[]
 
   @@index([code])
   @@index([name])
@@ -504,6 +514,7 @@ model Item {
   spareParts           SparePart[]
   productionOrders     ProductionOrder[]
   stockTransfers       StockTransfer[]
+  inquiryItems         InquiryItem[]
 
   @@index([sku])
   @@index([name])
@@ -844,9 +855,87 @@ model Customer {
   deliveries  Delivery[]
   invoices    Invoice[]
   payments    Payment[]
+  inquiries   CustomerInquiry[]
 
   @@index([code])
   @@index([name])
+}
+
+model CustomerInquiry {
+  inquiryNo          String                @id
+  inquiryDate        DateTime               @default(now())
+  customerId         String
+  salespersonId      String?
+  commercialPersonId String?
+  incoterm           String?
+  currency           String                @default("USD")
+  portLoading        String?
+  portDestination    String?
+  remarks            String?
+  status             CustomerInquiryStatus @default(OPEN)
+  cancelDate         DateTime?
+  cancelReason       String?
+  createdById        String
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesperson      User?     @relation("InquirySalesperson", fields: [salespersonId], references: [id], onDelete: SetNull)
+  commercialPerson User?     @relation("InquiryCommercialPerson", fields: [commercialPersonId], references: [id], onDelete: SetNull)
+  createdBy        User      @relation("InquiryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items            InquiryItem[]
+  rateSheets       SupplierRateSheet[]
+
+  @@index([customerId])
+  @@index([salespersonId])
+  @@index([commercialPersonId])
+  @@index([createdById])
+  @@index([inquiryDate])
+  @@index([status])
+}
+
+model InquiryItem {
+  id           String   @id @default(uuid())
+  inquiryNo    String
+  productId    String
+  quantity     Decimal  @db.Decimal(18, 4)
+  unit         String
+  shippingMode String?
+  paymentTerm  String?
+  manufacturer String?
+  description  String?
+  shipmentSchedule String?
+  packing      String?
+  detail       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  inquiry    CustomerInquiry    @relation(fields: [inquiryNo], references: [inquiryNo], onDelete: Cascade)
+  product    Item               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  rateSheets SupplierRateSheet[]
+
+  @@index([inquiryNo])
+  @@index([productId])
+}
+
+model SupplierRateSheet {
+  id            String   @id @default(uuid())
+  inquiryNo     String
+  inquiryItemId String
+  supplierId    String
+  quotedRate    Decimal  @db.Decimal(18, 4)
+  commissionPct Decimal  @default(0) @db.Decimal(7, 4)
+  isSelected    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  inquiry     CustomerInquiry @relation(fields: [inquiryNo], references: [inquiryNo], onDelete: Cascade)
+  inquiryItem InquiryItem     @relation(fields: [inquiryItemId], references: [id], onDelete: Cascade)
+  supplier    Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@unique([inquiryItemId, supplierId])
+  @@index([inquiryNo])
+  @@index([supplierId])
 }
 
 model Quotation {

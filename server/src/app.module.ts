@@ -4,6 +4,7 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AccessModule } from './access/access.module.js';
 import { MasterAccountsModule } from './master-accounts/master-accounts.module.js';
+import { InquiryModule } from './modules/inquiry/inquiry.module.js';
 import { OffersModule } from './offers/offers.module.js';
 import { IndentsModule } from './indents/indents.module.js';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
@@ -15,6 +16,7 @@ import { SamplesModule } from './samples/samples.module.js';
     AuthModule,
     AccessModule,
     MasterAccountsModule,
+    InquiryModule,
     OffersModule,
     IndentsModule,
     PurchaseOrdersModule,
