@@ -324,47 +324,74 @@ model PurchaseRequisitionItem {
 }
 
 model PurchaseOrder {
-  id           String              @id @default(uuid())
-  orderNo      String              @unique
-  supplierId   String
-  orderDate    DateTime
-  expectedDate DateTime?
-  status       PurchaseOrderStatus @default(DRAFT)
-  currency     String              @default("USD")
-  totalAmount  Decimal
-  notes        String?
-  createdById  String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id                String              @id @default(uuid())
+  orderNo           String              @unique
+  supplierId        String?
+  supplierAccountId String?
+  supplierName      String              @default("")
+  indentNo          String?
+  orderDate         DateTime
+  expectedDate      DateTime?
+  cancelDate        String?
+  status            PurchaseOrderStatus @default(DRAFT)
+  currency          String              @default("USD")
+  totalAmount       Decimal             @default(0)
+  customer          String?
+  salesperson       String?
+  commercialPerson  String?
+  refNo             String?
+  incoterm          String?
+  portLoading       String?
+  portDestination   String?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  supplier         Supplier            @relation(fields: [supplierId], references: [id])
-  createdBy        User?               @relation(fields: [createdById], references: [id])
+  supplier         Supplier?            @relation(fields: [supplierId], references: [id])
+  supplierAccount  MasterAccount?       @relation(fields: [supplierAccountId], references: [id])
+  indent           Indent?              @relation(fields: [indentNo], references: [no], onDelete: Restrict)
+  createdBy        User?                @relation(fields: [createdById], references: [id])
   items            PurchaseOrderItem[]
   goodsReceipts    GoodsReceipt[]
   supplierInvoices SupplierInvoice[]
 
   @@index([orderNo])
+  @@index([indentNo])
   @@index([supplierId])
+  @@index([supplierAccountId])
+  @@index([status])
+  @@index([createdById])
 }
 
 model PurchaseOrderItem {
   id              String   @id @default(uuid())
   purchaseOrderId String
-  itemId          String
+  itemId          String?
+  indentItemId    String?
+  productName     String   @default("")
+  category        String?
+  description     String?
+  indentQty       Decimal?
+  unit            String?
   quantity        Decimal
   receivedQty     Decimal  @default(0)
   unitPrice       Decimal
   taxRate         Decimal?
   discount        Decimal?
   lineTotal       Decimal
+  packing         String?
+  manufacturer    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  item          Item?         @relation(fields: [itemId], references: [id])
+  indentItem    IndentItem?   @relation(fields: [indentItemId], references: [id])
 
   @@index([purchaseOrderId])
   @@index([itemId])
+  @@index([indentItemId])
 }
 
 model GoodsReceipt {
@@ -1496,6 +1523,7 @@ model MasterAccount {
   @@unique([type, name])
   @@index([type])
   @@index([createdBy])
+  purchaseOrders PurchaseOrder[]
 }
 
 model BankDetail {
@@ -1582,4 +1610,173 @@ model OfferItem {
   updatedAt    DateTime @updatedAt
 
   @@index([offerNo])
+}
+
+model Indent {
+  id               String       @id @default(uuid())
+  no               String       @unique
+  indentDate       String
+  validityDate     String
+  offerNo          String
+  offerDate        String?
+  refNo            String?
+  customer         String
+  customerId       String?
+  supplier         String
+  supplierId       String?
+  salesperson      String?
+  salespersonId    String?
+  commercialPerson String?
+  portLoading      String?
+  portDestination  String?
+  currency         String       @default("US DOLLAR")
+  incoterm         String?
+  insurance        String?
+  shippingAgent    String?
+  shippingMark     String?
+  partialShipment  String       @default("Allowed")
+  transShipment    String       @default("Allowed")
+  shipmentPeriod   String?
+  bankType         String       @default("Bank")
+  specialNote      String?
+  instruction      String?
+  remarks          String?
+  checklist        Json?
+  printWithLogo    Boolean      @default(false)
+  status           String       @default("Active")
+  cancelDate       String?
+  poStatus         String       @default("PO Pending")
+  shipStatus       String       @default("Not Shipped")
+  createdBy        String?
+  creator          User?        @relation(fields: [createdBy], references: [id])
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  items IndentItem[]
+
+  @@index([offerNo])
+  @@index([status])
+  @@index([poStatus])
+  @@index([createdBy])
+  purchaseOrders PurchaseOrder[]
+}
+
+model IndentItem {
+  id            String   @id @default(uuid())
+  indentNo      String
+  indent        Indent   @relation(fields: [indentNo], references: [no], onDelete: Cascade)
+  productId     String?
+  product       String
+  category      String?
+  description   String?
+  quantity      Decimal
+  unit          String
+  rate          Decimal
+  commissionPct Decimal  @default(0)
+  shippingMode  String?
+  paymentTerm   String?
+  manufacturer  String?
+  packing       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([indentNo])
+  purchaseOrderItems PurchaseOrderItem[]
+}
+
+model TradeShipment {
+  id                String              @id @default(uuid())
+  no                String              @unique
+  shipmentDate      String
+  lotNo             String?
+  indentNo          String
+  indentDate        String?
+  lcNo              String?
+  lcDate            String?
+  lcExpiry          String?
+  lcBank            String?
+  lcAccountNo       String?
+  supplier          String
+  customer          String
+  salesperson       String?
+  commercialPerson  String?
+  invoiceNo         String?
+  invoiceDate       String?
+  blNo              String?
+  blDate            String?
+  shipmentRemarks   String?
+  otherRemarks      String?
+  finalRemarks      String?
+  readyForDebitNote Boolean             @default(false)
+  createdBy         String?
+  creator           User?               @relation(fields: [createdBy], references: [id])
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  items TradeShipmentItem[]
+
+  @@index([indentNo])
+  @@index([readyForDebitNote])
+  @@index([createdBy])
+}
+
+model TradeShipmentItem {
+  id          String        @id @default(uuid())
+  shipmentNo  String
+  shipment    TradeShipment @relation(fields: [shipmentNo], references: [no], onDelete: Cascade)
+  productId   String?
+  product     String
+  description String?
+  indentQty   Decimal?
+  shippedQty  Decimal
+  unit        String
+  rate        Decimal
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([shipmentNo])
+}
+
+model ShipmentDocument {
+  id             String   @id @default(uuid())
+  indentNo       String   @unique
+  supplier       String
+  customer       String
+  confNo         String?
+  confDate       String?
+  shipmentDate   String?
+  arrivalDate    String?
+  payDocType     String?
+  payDocNo       String?
+  payDocDate     String?
+  paymentTerm    String?
+  bankAccountNo  String?
+  bankName       String?
+  latestShipDate String?
+  expShipDate    String?
+  invoiceNo      String?
+  invoiceDate    String?
+  blNo           String?
+  blDate         String?
+  vessel         String?
+  sealNo         String?
+  containerNo    String?
+  grossWeight    String?
+  cbm            String?
+  blArrivalDate  String?
+  blIssuePlace   String?
+  loadType       String   @default("FCL")
+  batchNo        String?
+  mfgDate        String?
+  expiryDate     String?
+  reEvalDate     String?
+  trackNo        String?
+  documents      Json?
+  history        Json?
+  createdBy      String?
+  creator        User?    @relation(fields: [createdBy], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([indentNo])
+  @@index([createdBy])
 }
