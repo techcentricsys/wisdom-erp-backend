@@ -187,12 +187,18 @@ model User {
 
   userRoles              UserRole[]
   auditLogs              AuditLog[]
-  purchaseOrdersCreated  PurchaseOrder[]
-  productionPlansCreated ProductionPlan[]
-  masterAccountsCreated  MasterAccount[]
-  inquiriesCreated       CustomerInquiry[] @relation("InquiryCreatedBy")
-  inquiriesAsSalesperson CustomerInquiry[] @relation("InquirySalesperson")
-  inquiriesAsCommercial  CustomerInquiry[] @relation("InquiryCommercialPerson")
+  purchaseOrdersCreated    PurchaseOrder[]
+  productionPlansCreated   ProductionPlan[]
+  masterAccountsCreated    MasterAccount[]
+  inquiriesCreated         CustomerInquiry[]  @relation("InquiryCreatedBy")
+  inquiriesAsSalesperson   CustomerInquiry[]  @relation("InquirySalesperson")
+  inquiriesAsCommercial    CustomerInquiry[]  @relation("InquiryCommercialPerson")
+  offersCreated            Offer[]
+  indentsCreated           Indent[]
+  tradeShipmentsCreated    TradeShipment[]
+  shipmentDocumentsCreated ShipmentDocument[]
+  sampleReceivesCreated    SampleReceive[]
+  sampleIssuesCreated      SampleIssue[]
 
   @@index([email])
   @@index([companyId])
@@ -1779,4 +1785,75 @@ model ShipmentDocument {
 
   @@index([indentNo])
   @@index([createdBy])
+}
+
+model SampleReceive {
+  id          String              @id @default(uuid())
+  no          String              @unique
+  receiveDate String
+  supplier    String
+  remarks     String?
+  createdBy   String?
+  creator     User?               @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  items SampleReceiveItem[]
+
+  @@index([supplier])
+  @@index([createdBy])
+}
+
+model SampleReceiveItem {
+  id          String        @id @default(uuid())
+  receiveNo   String
+  receive     SampleReceive @relation(fields: [receiveNo], references: [no], onDelete: Cascade)
+  product     String
+  description String?
+  quantity    Decimal
+  unit        String
+  packSize    String?
+  batchNo     String
+  mfgDate     String?
+  expDate     String?
+  origin      String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([receiveNo])
+  @@index([product, batchNo, unit])
+}
+
+model SampleIssue {
+  id        String            @id @default(uuid())
+  no        String            @unique
+  issueDate String
+  customer  String
+  remarks   String?
+  createdBy String?
+  creator   User?             @relation(fields: [createdBy], references: [id])
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  items SampleIssueItem[]
+
+  @@index([customer])
+  @@index([createdBy])
+}
+
+model SampleIssueItem {
+  id          String      @id @default(uuid())
+  issueNo     String
+  issue       SampleIssue @relation(fields: [issueNo], references: [no], onDelete: Cascade)
+  product     String
+  batchNo     String
+  unit        String
+  quantity    Decimal
+  description String?
+  remarks     String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([issueNo])
+  @@index([product, batchNo, unit])
 }
