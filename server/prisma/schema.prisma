@@ -189,10 +189,15 @@ model User {
   auditLogs              AuditLog[]
   purchaseOrdersCreated  PurchaseOrder[]
   productionPlansCreated ProductionPlan[]
-  masterAccountsCreated  MasterAccount[]
-  inquiriesCreated       CustomerInquiry[] @relation("InquiryCreatedBy")
-  inquiriesAsSalesperson CustomerInquiry[] @relation("InquirySalesperson")
-  inquiriesAsCommercial  CustomerInquiry[] @relation("InquiryCommercialPerson")
+  masterAccountsCreated    MasterAccount[]
+  inquiriesCreated         CustomerInquiry[]  @relation("InquiryCreatedBy")
+  inquiriesAsSalesperson   CustomerInquiry[]  @relation("InquirySalesperson")
+  inquiriesAsCommercial    CustomerInquiry[]  @relation("InquiryCommercialPerson")
+  offersCreated            Offer[]
+  indentsCreated           Indent[]
+  tradeShipmentsCreated    TradeShipment[]
+  shipmentDocumentsCreated ShipmentDocument[]
+  setupMastersCreated      SetupMasterItem[]
 
   @@index([email])
   @@index([companyId])
@@ -1779,4 +1784,37 @@ model ShipmentDocument {
 
   @@index([indentNo])
   @@index([createdBy])
+}
+
+model SetupMasterItem {
+  id           String   @id @default(uuid())
+  kind         String
+  name         String
+  description  String?
+  status       String   @default("Active")
+  swift        String?
+  portUse      String?
+  currencyCode String?
+  createdBy    String?
+  creator      User?    @relation(fields: [createdBy], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([kind, name])
+  @@index([kind])
+  @@index([createdBy])
+}
+
+model MailSetting {
+  id          String   @id @default("default")
+  senderName  String   @default("")
+  senderEmail String   @default("")
+  host        String   @default("")
+  port        String   @default("")
+  security    String   @default("TLS")
+  username    String   @default("")
+  password    String   @default("")
+  signature   String   @default("")
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
 }
