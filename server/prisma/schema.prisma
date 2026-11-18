@@ -183,9 +183,11 @@ model User {
   auditLogs              AuditLog[]
   purchaseOrdersCreated  PurchaseOrder[]
   productionPlansCreated ProductionPlan[]
-  masterAccountsCreated  MasterAccount[]
-  offersCreated          Offer[]
-  indentsCreated         Indent[]
+  masterAccountsCreated    MasterAccount[]
+  offersCreated            Offer[]
+  indentsCreated           Indent[]
+  tradeShipmentsCreated    TradeShipment[]
+  shipmentDocumentsCreated ShipmentDocument[]
 
   @@index([email])
   @@index([companyId])
@@ -1565,4 +1567,102 @@ model IndentItem {
   updatedAt     DateTime @updatedAt
 
   @@index([indentNo])
+}
+
+model TradeShipment {
+  id                String              @id @default(uuid())
+  no                String              @unique
+  shipmentDate      String
+  lotNo             String?
+  indentNo          String
+  indentDate        String?
+  lcNo              String?
+  lcDate            String?
+  lcExpiry          String?
+  lcBank            String?
+  lcAccountNo       String?
+  supplier          String
+  customer          String
+  salesperson       String?
+  commercialPerson  String?
+  invoiceNo         String?
+  invoiceDate       String?
+  blNo              String?
+  blDate            String?
+  shipmentRemarks   String?
+  otherRemarks      String?
+  finalRemarks      String?
+  readyForDebitNote Boolean             @default(false)
+  createdBy         String?
+  creator           User?               @relation(fields: [createdBy], references: [id])
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  items TradeShipmentItem[]
+
+  @@index([indentNo])
+  @@index([readyForDebitNote])
+  @@index([createdBy])
+}
+
+model TradeShipmentItem {
+  id          String        @id @default(uuid())
+  shipmentNo  String
+  shipment    TradeShipment @relation(fields: [shipmentNo], references: [no], onDelete: Cascade)
+  productId   String?
+  product     String
+  description String?
+  indentQty   Decimal?
+  shippedQty  Decimal
+  unit        String
+  rate        Decimal
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([shipmentNo])
+}
+
+model ShipmentDocument {
+  id             String   @id @default(uuid())
+  indentNo       String   @unique
+  supplier       String
+  customer       String
+  confNo         String?
+  confDate       String?
+  shipmentDate   String?
+  arrivalDate    String?
+  payDocType     String?
+  payDocNo       String?
+  payDocDate     String?
+  paymentTerm    String?
+  bankAccountNo  String?
+  bankName       String?
+  latestShipDate String?
+  expShipDate    String?
+  invoiceNo      String?
+  invoiceDate    String?
+  blNo           String?
+  blDate         String?
+  vessel         String?
+  sealNo         String?
+  containerNo    String?
+  grossWeight    String?
+  cbm            String?
+  blArrivalDate  String?
+  blIssuePlace   String?
+  loadType       String   @default("FCL")
+  batchNo        String?
+  mfgDate        String?
+  expiryDate     String?
+  reEvalDate     String?
+  trackNo        String?
+  documents      Json?
+  history        Json?
+  createdBy      String?
+  creator        User?    @relation(fields: [createdBy], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([indentNo])
+  @@index([createdBy])
 }
