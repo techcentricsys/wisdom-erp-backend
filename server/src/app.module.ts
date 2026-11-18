@@ -6,6 +6,7 @@ import { AccessModule } from './access/access.module.js';
 import { MasterAccountsModule } from './master-accounts/master-accounts.module.js';
 import { OffersModule } from './offers/offers.module.js';
 import { IndentsModule } from './indents/indents.module.js';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
 import { ShipmentsModule } from './shipments/shipments.module.js';
 
 @Module({
@@ -15,6 +16,7 @@ import { ShipmentsModule } from './shipments/shipments.module.js';
     MasterAccountsModule,
     OffersModule,
     IndentsModule,
+    PurchaseOrdersModule,
     ShipmentsModule,
   ],
   controllers: [AppController],
