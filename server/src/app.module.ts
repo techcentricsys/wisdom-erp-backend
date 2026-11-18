@@ -8,6 +8,7 @@ import { OffersModule } from './offers/offers.module.js';
 import { IndentsModule } from './indents/indents.module.js';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
 import { ShipmentsModule } from './shipments/shipments.module.js';
+import { SamplesModule } from './samples/samples.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ShipmentsModule } from './shipments/shipments.module.js';
     IndentsModule,
     PurchaseOrdersModule,
     ShipmentsModule,
+    SamplesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
