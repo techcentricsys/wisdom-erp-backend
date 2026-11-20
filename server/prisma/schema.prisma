@@ -185,20 +185,23 @@ model User {
   failedLogins    Int       @default(0)
   lockedUntil     DateTime?
 
-  userRoles              UserRole[]
-  auditLogs              AuditLog[]
-  purchaseOrdersCreated  PurchaseOrder[]
-  productionPlansCreated ProductionPlan[]
-  masterAccountsCreated  MasterAccount[]
-  inquiriesCreated       CustomerInquiry[] @relation("InquiryCreatedBy")
-  inquiriesAsSalesperson CustomerInquiry[] @relation("InquirySalesperson")
-  inquiriesAsCommercial  CustomerInquiry[] @relation("InquiryCommercialPerson")
-  debitNotesCreated DebitNote[] @relation("DebitNoteCreator")
+  userRoles                 UserRole[]
+  auditLogs                 AuditLog[]
+  purchaseOrdersCreated     PurchaseOrder[]
+  productionPlansCreated    ProductionPlan[]
+  masterAccountsCreated     MasterAccount[]
+  inquiriesCreated          CustomerInquiry[]   @relation("InquiryCreatedBy")
+  inquiriesAsSalesperson    CustomerInquiry[]   @relation("InquirySalesperson")
+  inquiriesAsCommercial     CustomerInquiry[]   @relation("InquiryCommercialPerson")
+  debitNotesCreated         DebitNote[]         @relation("DebitNoteCreator")
   commissionReceiptsCreated CommissionReceipt[] @relation("CommissionReceiptCreator")
-  offersCreated Offer[] @relation("OfferCreator")
-  indentsCreated Indent[] @relation("IndentCreator")
-  tradeShipmentsCreated TradeShipment[] @relation("TradeShipmentCreator")
-  shipmentDocumentsCreated ShipmentDocument[] @relation("ShipmentDocumentCreator")
+  offersCreated             Offer[]             @relation("OfferCreator")
+  indentsCreated            Indent[]            @relation("IndentCreator")
+  tradeShipmentsCreated     TradeShipment[]     @relation("TradeShipmentCreator")
+  shipmentDocumentsCreated  ShipmentDocument[]  @relation("ShipmentDocumentCreator")
+  sampleReceivesCreated     SampleReceive[]
+  sampleIssuesCreated       SampleIssue[]
+  setupMastersCreated       SetupMasterItem[]
 
   @@index([email])
   @@index([companyId])
@@ -354,10 +357,10 @@ model PurchaseOrder {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  supplier         Supplier?            @relation(fields: [supplierId], references: [id])
-  supplierAccount  MasterAccount?       @relation(fields: [supplierAccountId], references: [id])
-  indent           Indent?              @relation(fields: [indentNo], references: [no], onDelete: Restrict)
-  createdBy        User?                @relation(fields: [createdById], references: [id])
+  supplier         Supplier?           @relation(fields: [supplierId], references: [id])
+  supplierAccount  MasterAccount?      @relation(fields: [supplierAccountId], references: [id])
+  indent           Indent?             @relation(fields: [indentNo], references: [no], onDelete: Restrict)
+  createdBy        User?               @relation(fields: [createdById], references: [id])
   items            PurchaseOrderItem[]
   goodsReceipts    GoodsReceipt[]
   supplierInvoices SupplierInvoice[]
@@ -863,7 +866,7 @@ model Customer {
 
 model CustomerInquiry {
   inquiryNo          String                @id
-  inquiryDate        DateTime               @default(now())
+  inquiryDate        DateTime              @default(now())
   customerId         String
   salespersonId      String?
   commercialPersonId String?
@@ -876,13 +879,13 @@ model CustomerInquiry {
   cancelDate         DateTime?
   cancelReason       String?
   createdById        String
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  salesperson      User?     @relation("InquirySalesperson", fields: [salespersonId], references: [id], onDelete: SetNull)
-  commercialPerson User?     @relation("InquiryCommercialPerson", fields: [commercialPersonId], references: [id], onDelete: SetNull)
-  createdBy        User      @relation("InquiryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  customer         Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesperson      User?               @relation("InquirySalesperson", fields: [salespersonId], references: [id], onDelete: SetNull)
+  commercialPerson User?               @relation("InquiryCommercialPerson", fields: [commercialPersonId], references: [id], onDelete: SetNull)
+  createdBy        User                @relation("InquiryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items            InquiryItem[]
   rateSheets       SupplierRateSheet[]
 
@@ -895,23 +898,23 @@ model CustomerInquiry {
 }
 
 model InquiryItem {
-  id           String   @id @default(uuid())
-  inquiryNo    String
-  productId    String
-  quantity     Decimal  @db.Decimal(18, 4)
-  unit         String
-  shippingMode String?
-  paymentTerm  String?
-  manufacturer String?
-  description  String?
+  id               String   @id @default(uuid())
+  inquiryNo        String
+  productId        String
+  quantity         Decimal  @db.Decimal(18, 4)
+  unit             String
+  shippingMode     String?
+  paymentTerm      String?
+  manufacturer     String?
+  description      String?
   shipmentSchedule String?
-  packing      String?
-  detail       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  packing          String?
+  detail           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  inquiry    CustomerInquiry    @relation(fields: [inquiryNo], references: [inquiryNo], onDelete: Cascade)
-  product    Item               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  inquiry    CustomerInquiry     @relation(fields: [inquiryNo], references: [inquiryNo], onDelete: Cascade)
+  product    Item                @relation(fields: [productId], references: [id], onDelete: Restrict)
   rateSheets SupplierRateSheet[]
 
   @@index([inquiryNo])
@@ -1524,15 +1527,15 @@ model MasterAccount {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  bankDetails BankDetail[]
-  debitNotesAsSupplier DebitNote[] @relation("DebitNoteSupplier")
-  debitNotesAsCustomer DebitNote[] @relation("DebitNoteCustomer")
-  commissionReceipts CommissionReceipt[]
+  bankDetails          BankDetail[]
+  debitNotesAsSupplier DebitNote[]         @relation("DebitNoteSupplier")
+  debitNotesAsCustomer DebitNote[]         @relation("DebitNoteCustomer")
+  commissionReceipts   CommissionReceipt[]
+  purchaseOrders       PurchaseOrder[]
 
   @@unique([type, name])
   @@index([type])
   @@index([createdBy])
-  purchaseOrders PurchaseOrder[]
 }
 
 model BankDetail {
@@ -1557,8 +1560,8 @@ model BankDetail {
 }
 
 model Offer {
-  id               String      @id @default(uuid())
-  no               String      @unique
+  id               String   @id @default(uuid())
+  no               String   @unique
   offerDate        String
   validityDate     String
   inquiryNo        String
@@ -1571,24 +1574,24 @@ model Offer {
   commercialPerson String?
   portLoading      String?
   portDestination  String?
-  partialShipment  String      @default("Allowed")
-  transShipment    String      @default("Allowed")
+  partialShipment  String   @default("Allowed")
+  transShipment    String   @default("Allowed")
   shipmentPeriod   String?
-  currency         String      @default("US DOLLAR")
+  currency         String   @default("US DOLLAR")
   incoterm         String?
   insurance        String?
   remarks          String?
-  status           String      @default("Open")
+  status           String   @default("Open")
   denyDate         String?
   denyReason       String?
-  approvalStatus   String      @default("Pending")
+  approvalStatus   String   @default("Pending")
   approvedBy       String?
   approvalDate     String?
   approvalRemark   String?
   createdBy        String?
-  creator          User?       @relation("OfferCreator", fields: [createdBy], references: [id])
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  creator          User?    @relation("OfferCreator", fields: [createdBy], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   items OfferItem[]
 
@@ -1622,8 +1625,8 @@ model OfferItem {
 }
 
 model Indent {
-  id               String       @id @default(uuid())
-  no               String       @unique
+  id               String   @id @default(uuid())
+  no               String   @unique
   indentDate       String
   validityDate     String
   offerNo          String
@@ -1638,63 +1641,64 @@ model Indent {
   commercialPerson String?
   portLoading      String?
   portDestination  String?
-  currency         String       @default("US DOLLAR")
+  currency         String   @default("US DOLLAR")
   incoterm         String?
   insurance        String?
   shippingAgent    String?
   shippingMark     String?
-  partialShipment  String       @default("Allowed")
-  transShipment    String       @default("Allowed")
+  partialShipment  String   @default("Allowed")
+  transShipment    String   @default("Allowed")
   shipmentPeriod   String?
-  bankType         String       @default("Bank")
+  bankType         String   @default("Bank")
   specialNote      String?
   instruction      String?
   remarks          String?
   checklist        Json?
-  printWithLogo    Boolean      @default(false)
-  status           String       @default("Active")
+  printWithLogo    Boolean  @default(false)
+  status           String   @default("Active")
   cancelDate       String?
-  poStatus         String       @default("PO Pending")
-  shipStatus       String       @default("Not Shipped")
+  poStatus         String   @default("PO Pending")
+  shipStatus       String   @default("Not Shipped")
   createdBy        String?
-  creator          User?        @relation("IndentCreator", fields: [createdBy], references: [id])
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  creator          User?    @relation("IndentCreator", fields: [createdBy], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  items IndentItem[]
+  items          IndentItem[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([offerNo])
   @@index([status])
   @@index([poStatus])
   @@index([createdBy])
-  purchaseOrders PurchaseOrder[]
 }
 
 model IndentItem {
-  id            String   @id @default(uuid())
-  indentNo      String
-  indent        Indent   @relation(fields: [indentNo], references: [no], onDelete: Cascade)
-  productId     String?
-  product       String
-  category      String?
-  description   String?
-  quantity      Decimal
-  unit          String
-  rate          Decimal
-  commissionPct Decimal  @default(0)
-  shippingMode  String?
-  paymentTerm   String?
-  manufacturer  String?
-  packing       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@index([indentNo])
+  id                 String              @id @default(uuid())
+  indentNo           String
+  indent             Indent              @relation(fields: [indentNo], references: [no], onDelete: Cascade)
+  productId          String?
+  product            String
+  category           String?
+  description        String?
+  quantity           Decimal
+  unit               String
+  rate               Decimal
+  commissionPct      Decimal             @default(0)
+  shippingMode       String?
+  paymentTerm        String?
+  manufacturer       String?
+  packing            String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([indentNo])
 }
 
 model TradeShipment {
-  id                String              @id @default(uuid())
-  no                String              @unique
+  id                String   @id @default(uuid())
+  no                String   @unique
   shipmentDate      String
   lotNo             String?
   indentNo          String
@@ -1715,13 +1719,13 @@ model TradeShipment {
   shipmentRemarks   String?
   otherRemarks      String?
   finalRemarks      String?
-  readyForDebitNote Boolean             @default(false)
+  readyForDebitNote Boolean  @default(false)
   createdBy         String?
-  creator           User?               @relation("TradeShipmentCreator", fields: [createdBy], references: [id])
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  creator           User?    @relation("TradeShipmentCreator", fields: [createdBy], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  items TradeShipmentItem[]
+  items      TradeShipmentItem[]
   debitNotes DebitNote[]
 
   @@index([indentNo])
@@ -1747,23 +1751,24 @@ model TradeShipmentItem {
 }
 
 model DebitNote {
-  id                    String   @id @default(uuid())
-  no                    String   @unique
+  id                    String                  @id @default(uuid())
+  no                    String                  @unique
   debitNoteDate         DateTime
   shipmentNo            String
   supplierId            String
   customerId            String
-  totalCommissionAmount Decimal  @default(0) @db.Decimal(18, 2)
+  totalCommissionAmount Decimal                 @default(0) @db.Decimal(18, 2)
   remarks               String?
   createdBy             String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  shipment TradeShipment @relation(fields: [shipmentNo], references: [no], onDelete: Restrict)
-  supplier MasterAccount @relation("DebitNoteSupplier", fields: [supplierId], references: [id], onDelete: Restrict)
-  customer MasterAccount @relation("DebitNoteCustomer", fields: [customerId], references: [id], onDelete: Restrict)
-  creator User? @relation("DebitNoteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  lines DebitNoteLine[]
-  receiptLines CommissionReceiptLine[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  shipment              TradeShipment           @relation(fields: [shipmentNo], references: [no], onDelete: Restrict)
+  supplier              MasterAccount           @relation("DebitNoteSupplier", fields: [supplierId], references: [id], onDelete: Restrict)
+  customer              MasterAccount           @relation("DebitNoteCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  creator               User?                   @relation("DebitNoteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  lines                 DebitNoteLine[]
+  receiptLines          CommissionReceiptLine[]
+
   @@unique([shipmentNo])
   @@index([supplierId])
   @@index([customerId])
@@ -1772,55 +1777,58 @@ model DebitNote {
 }
 
 model DebitNoteLine {
-  id String @id @default(uuid())
+  id          String    @id @default(uuid())
   debitNoteId String
-  productId String?
-  product String
+  productId   String?
+  product     String
   description String?
-  detail String?
-  shipQty Decimal @db.Decimal(18, 4)
-  unit String
-  scRate Decimal @db.Decimal(18, 4)
-  indRate Decimal @db.Decimal(18, 4)
-  diffRate Decimal @db.Decimal(18, 4)
-  opAmt Decimal @db.Decimal(18, 2)
-  commPct Decimal @db.Decimal(7, 4)
-  commAmt Decimal @db.Decimal(18, 2)
-  otherAmt Decimal @default(0) @db.Decimal(18, 2)
-  totalComm Decimal @db.Decimal(18, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  debitNote DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+  detail      String?
+  shipQty     Decimal   @db.Decimal(18, 4)
+  unit        String
+  scRate      Decimal   @db.Decimal(18, 4)
+  indRate     Decimal   @db.Decimal(18, 4)
+  diffRate    Decimal   @db.Decimal(18, 4)
+  opAmt       Decimal   @db.Decimal(18, 2)
+  commPct     Decimal   @db.Decimal(7, 4)
+  commAmt     Decimal   @db.Decimal(18, 2)
+  otherAmt    Decimal   @default(0) @db.Decimal(18, 2)
+  totalComm   Decimal   @db.Decimal(18, 2)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  debitNote   DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+
   @@index([debitNoteId])
 }
 
 model CommissionReceipt {
-  id String @id @default(uuid())
-  no String @unique
+  id          String                  @id @default(uuid())
+  no          String                  @unique
   receiptDate DateTime
-  supplierId String
-  refNo String?
-  remarks String?
-  createdBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  supplier MasterAccount @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  creator User? @relation("CommissionReceiptCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  lines CommissionReceiptLine[]
+  supplierId  String
+  refNo       String?
+  remarks     String?
+  createdBy   String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  supplier    MasterAccount           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  creator     User?                   @relation("CommissionReceiptCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  lines       CommissionReceiptLine[]
+
   @@index([supplierId])
   @@index([receiptDate])
   @@index([createdBy])
 }
 
 model CommissionReceiptLine {
-  id String @id @default(uuid())
-  receiptId String
+  id          String            @id @default(uuid())
+  receiptId   String
   debitNoteId String
-  paidAmount Decimal @db.Decimal(18, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  receipt CommissionReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  debitNote DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Restrict)
+  paidAmount  Decimal           @db.Decimal(18, 2)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  receipt     CommissionReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  debitNote   DebitNote         @relation(fields: [debitNoteId], references: [id], onDelete: Restrict)
+
   @@unique([receiptId, debitNoteId])
   @@index([debitNoteId])
 }
@@ -1874,4 +1882,108 @@ model ShipmentDocument {
 
   @@index([indentNo])
   @@index([createdBy])
+}
+
+model SampleReceive {
+  id          String   @id @default(uuid())
+  no          String   @unique
+  receiveDate String
+  supplier    String
+  remarks     String?
+  createdBy   String?
+  creator     User?    @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items SampleReceiveItem[]
+
+  @@index([supplier])
+  @@index([createdBy])
+}
+
+model SampleReceiveItem {
+  id          String        @id @default(uuid())
+  receiveNo   String
+  receive     SampleReceive @relation(fields: [receiveNo], references: [no], onDelete: Cascade)
+  product     String
+  description String?
+  quantity    Decimal
+  unit        String
+  packSize    String?
+  batchNo     String
+  mfgDate     String?
+  expDate     String?
+  origin      String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([receiveNo])
+  @@index([product, batchNo, unit])
+}
+
+model SampleIssue {
+  id        String   @id @default(uuid())
+  no        String   @unique
+  issueDate String
+  customer  String
+  remarks   String?
+  createdBy String?
+  creator   User?    @relation(fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items SampleIssueItem[]
+
+  @@index([customer])
+  @@index([createdBy])
+}
+
+model SampleIssueItem {
+  id          String      @id @default(uuid())
+  issueNo     String
+  issue       SampleIssue @relation(fields: [issueNo], references: [no], onDelete: Cascade)
+  product     String
+  batchNo     String
+  unit        String
+  quantity    Decimal
+  description String?
+  remarks     String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([issueNo])
+  @@index([product, batchNo, unit])
+}
+
+model SetupMasterItem {
+  id           String   @id @default(uuid())
+  kind         String
+  name         String
+  description  String?
+  status       String   @default("Active")
+  swift        String?
+  portUse      String?
+  currencyCode String?
+  createdBy    String?
+  creator      User?    @relation(fields: [createdBy], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([kind, name])
+  @@index([kind])
+  @@index([createdBy])
+}
+
+model MailSetting {
+  id          String   @id @default("default")
+  senderName  String   @default("")
+  senderEmail String   @default("")
+  host        String   @default("")
+  port        String   @default("")
+  security    String   @default("TLS")
+  username    String   @default("")
+  password    String   @default("")
+  signature   String   @default("")
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
 }
