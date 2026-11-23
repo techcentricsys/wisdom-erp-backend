@@ -17,6 +17,8 @@ const inquiryInclude = {
   customer: { select: { id: true, code: true, name: true } },
   salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
   commercialPerson: { select: { id: true, firstName: true, lastName: true, email: true } },
+  salespersonMaster: { select: { id: true, name: true, status: true } },
+  commercialPersonMaster: { select: { id: true, name: true, status: true } },
   items: {
     include: {
       product: { select: { id: true, sku: true, name: true, uom: true } },
@@ -76,8 +78,10 @@ export class InquiryService {
           inquiryNo,
           inquiryDate: dto.inquiryDate ? new Date(dto.inquiryDate) : new Date(),
           customerId: dto.customerId.trim(),
-          salespersonId: dto.salespersonId?.trim() || null,
-          commercialPersonId: dto.commercialPersonId?.trim() || null,
+          salespersonId: dto.salespersonMasterId ? null : dto.salespersonId?.trim() || null,
+          commercialPersonId: dto.commercialPersonMasterId ? null : dto.commercialPersonId?.trim() || null,
+          salespersonMasterId: dto.salespersonMasterId?.trim() || null,
+          commercialPersonMasterId: dto.commercialPersonMasterId?.trim() || null,
           incoterm: dto.incoterm?.trim() || null,
           currency: dto.currency?.trim().toUpperCase() || 'USD',
           portLoading: dto.portLoading?.trim() || null,
@@ -97,7 +101,7 @@ export class InquiryService {
       throw new ConflictException('A cancelled inquiry cannot be edited.');
     }
     const actor = await this.prisma.user.findUnique({ where: { id: actorId }, select: { companyId: true } });
-    if (dto.customerId || dto.salespersonId || dto.commercialPersonId) {
+    if (dto.customerId || dto.salespersonId !== undefined || dto.commercialPersonId !== undefined || dto.salespersonMasterId !== undefined || dto.commercialPersonMasterId !== undefined) {
       await this.validateHeaderReferences(dto, actor?.companyId ?? null);
     }
     if (dto.items) await this.validateItems(dto.items);
@@ -105,8 +109,14 @@ export class InquiryService {
     const data: Prisma.CustomerInquiryUpdateInput = {};
     if (dto.inquiryDate) data.inquiryDate = new Date(dto.inquiryDate);
     if (dto.customerId) data.customer = { connect: { id: dto.customerId.trim() } };
-    if (dto.salespersonId !== undefined) data.salesperson = dto.salespersonId ? { connect: { id: dto.salespersonId.trim() } } : { disconnect: true };
-    if (dto.commercialPersonId !== undefined) data.commercialPerson = dto.commercialPersonId ? { connect: { id: dto.commercialPersonId.trim() } } : { disconnect: true };
+    if (dto.salespersonId !== undefined || dto.salespersonMasterId !== undefined) {
+      data.salesperson = dto.salespersonMasterId ? { disconnect: true } : dto.salespersonId ? { connect: { id: dto.salespersonId.trim() } } : { disconnect: true };
+      data.salespersonMaster = dto.salespersonMasterId ? { connect: { id: dto.salespersonMasterId.trim() } } : { disconnect: true };
+    }
+    if (dto.commercialPersonId !== undefined || dto.commercialPersonMasterId !== undefined) {
+      data.commercialPerson = dto.commercialPersonMasterId ? { disconnect: true } : dto.commercialPersonId ? { connect: { id: dto.commercialPersonId.trim() } } : { disconnect: true };
+      data.commercialPersonMaster = dto.commercialPersonMasterId ? { connect: { id: dto.commercialPersonMasterId.trim() } } : { disconnect: true };
+    }
     if (dto.incoterm !== undefined) data.incoterm = dto.incoterm.trim() || null;
     if (dto.currency !== undefined) data.currency = dto.currency.trim().toUpperCase();
     if (dto.portLoading !== undefined) data.portLoading = dto.portLoading.trim() || null;
@@ -342,6 +352,17 @@ export class InquiryService {
         select: { id: true },
       });
       if (users.length !== new Set(userIds).size) throw new NotFoundException('One or more assigned users are not active in this company.');
+    }
+    const masterReferences = [
+      { id: dto.salespersonMasterId, kind: 'salesperson' },
+      { id: dto.commercialPersonMasterId, kind: 'commercialPerson' },
+    ].filter((reference): reference is { id: string; kind: string } => typeof reference.id === 'string' && Boolean(reference.id.trim()));
+    for (const reference of masterReferences) {
+      const master = await this.prisma.setupMasterItem.findFirst({
+        where: { id: reference.id.trim(), kind: reference.kind },
+        select: { id: true },
+      });
+      if (!master) throw new NotFoundException(`The selected ${reference.kind === 'salesperson' ? 'salesperson' : 'commercial person'} master was not found.`);
     }
   }
 

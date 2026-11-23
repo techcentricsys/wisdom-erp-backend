@@ -868,6 +868,8 @@ model CustomerInquiry {
   customerId         String
   salespersonId      String?
   commercialPersonId String?
+  salespersonMasterId      String?
+  commercialPersonMasterId String?
   incoterm           String?
   currency           String                @default("USD")
   portLoading        String?
@@ -883,6 +885,8 @@ model CustomerInquiry {
   customer         Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
   salesperson      User?     @relation("InquirySalesperson", fields: [salespersonId], references: [id], onDelete: SetNull)
   commercialPerson User?     @relation("InquiryCommercialPerson", fields: [commercialPersonId], references: [id], onDelete: SetNull)
+  salespersonMaster      SetupMasterItem? @relation("InquirySalespersonMaster", fields: [salespersonMasterId], references: [id], onDelete: SetNull)
+  commercialPersonMaster SetupMasterItem? @relation("InquiryCommercialPersonMaster", fields: [commercialPersonMasterId], references: [id], onDelete: SetNull)
   createdBy        User      @relation("InquiryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items            InquiryItem[]
   rateSheets       SupplierRateSheet[]
@@ -890,6 +894,8 @@ model CustomerInquiry {
   @@index([customerId])
   @@index([salespersonId])
   @@index([commercialPersonId])
+  @@index([salespersonMasterId])
+  @@index([commercialPersonMasterId])
   @@index([createdById])
   @@index([inquiryDate])
   @@index([status])
@@ -1870,6 +1876,8 @@ model SetupMasterItem {
   currencyCode String?
   createdBy    String?
   creator      User?    @relation(fields: [createdBy], references: [id])
+  inquiriesAsSalesperson      CustomerInquiry[] @relation("InquirySalespersonMaster")
+  inquiriesAsCommercialPerson CustomerInquiry[] @relation("InquiryCommercialPersonMaster")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
