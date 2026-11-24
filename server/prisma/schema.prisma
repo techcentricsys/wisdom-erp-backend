@@ -200,6 +200,8 @@ model User {
   sampleReceivesCreated    SampleReceive[]
   sampleIssuesCreated      SampleIssue[]
   setupMastersCreated      SetupMasterItem[]
+  debitNotesCreated        DebitNote[]
+  commissionReceiptsCreated CommissionReceipt[]
 
   @@index([email])
   @@index([companyId])
@@ -1898,4 +1900,87 @@ model MailSetting {
   signature   String   @default("")
   updatedBy   String?
   updatedAt   DateTime @updatedAt
+}
+
+model DebitNote {
+  id                    String                  @id @default(uuid())
+  no                    String                  @unique
+  debitNoteDate         String
+  shipmentNo            String                  @unique
+  shipDate              String?
+  invNo                 String?
+  invDate               String?
+  lcNo                  String?
+  lcDate                String?
+  supplier              String
+  customer              String
+  remarks               String?
+  totalCommissionAmount Decimal                 @default(0)
+  createdBy             String?
+  creator               User?                   @relation(fields: [createdBy], references: [id])
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  lines        DebitNoteLine[]
+  receiptLines CommissionReceiptLine[]
+
+  @@index([supplier])
+  @@index([customer])
+  @@index([createdBy])
+}
+
+model DebitNoteLine {
+  id          String    @id @default(uuid())
+  debitNoteNo String
+  debitNote   DebitNote @relation(fields: [debitNoteNo], references: [no], onDelete: Cascade)
+  productId   String?
+  product     String
+  description String?
+  detail      String?
+  shipQty     Decimal
+  unit        String
+  scRate      Decimal
+  indRate     Decimal
+  diffRate    Decimal   @default(0)
+  opAmt       Decimal   @default(0)
+  commPct     Decimal   @default(0)
+  commAmt     Decimal   @default(0)
+  otherAmt    Decimal   @default(0)
+  totalComm   Decimal   @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([debitNoteNo])
+}
+
+model CommissionReceipt {
+  id          String                  @id @default(uuid())
+  no          String                  @unique
+  receiptDate String
+  supplier    String
+  refNo       String?
+  remarks     String?
+  createdBy   String?
+  creator     User?                   @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  lines CommissionReceiptLine[]
+
+  @@index([supplier])
+  @@index([createdBy])
+}
+
+model CommissionReceiptLine {
+  id          String            @id @default(uuid())
+  receiptNo   String
+  receipt     CommissionReceipt @relation(fields: [receiptNo], references: [no], onDelete: Cascade)
+  debitNoteNo String
+  debitNote   DebitNote         @relation(fields: [debitNoteNo], references: [no], onDelete: Restrict)
+  paidAmount  Decimal
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([receiptNo, debitNoteNo])
+  @@index([debitNoteNo])
 }

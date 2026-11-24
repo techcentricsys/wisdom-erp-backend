@@ -69,7 +69,7 @@ const legacyCanView = (baseRole: BaseRole, label: string) => {
 
 /* create/edit/delete => view => access; no access => nothing; locked / n.a. cells off */
 export function normalizeCell(cell: Partial<Cell> | undefined, label: string, baseRole: BaseRole): Cell {
-  const c: Cell = { ...emptyCell(), ...(cell ?? {}) };
+  const c: Cell = { ...emptyCell(), ...cell };
   if (baseRole === 'Super Admin') {
     return {
       access: true,

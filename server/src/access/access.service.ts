@@ -86,7 +86,7 @@ export class AccessService implements OnModuleInit {
 
   private splitName(name: string) {
     const parts = cap(name).split(' ');
-    return { firstName: parts[0], lastName: parts.slice(1).join(' ') || '-' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
   }
 
   /** Resolve roleId / base role name to a Role row. */
