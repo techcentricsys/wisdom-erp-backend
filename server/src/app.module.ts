@@ -11,6 +11,7 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.j
 import { ShipmentsModule } from './shipments/shipments.module.js';
 import { SamplesModule } from './samples/samples.module.js';
 import { SetupMastersModule } from './setup-masters/setup-masters.module.js';
+import { FinancialSettlementModule } from './financial-settlement/financial-settlement.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SetupMastersModule } from './setup-masters/setup-masters.module.js';
     ShipmentsModule,
     SamplesModule,
     SetupMastersModule,
+    FinancialSettlementModule,
   ],
   controllers: [AppController],
   providers: [AppService],
