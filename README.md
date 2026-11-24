@@ -99,9 +99,34 @@ npm run dev
 
 The application will be running locally, with the frontend typically accessible at `http://localhost:5173` and the backend API running at `http://localhost:3000`.
 
+### Run the backend with Docker Compose
+
+Set `DATABASE_URL` in `server/.env` to the connection string from your Neon project. Keep the connection string private; `server/.env` is ignored by Git and excluded from the Docker build context. The image receives it only as a runtime environment variable.
+
+From the repository root, build and start the backend image:
+
+```bash
+docker compose up --build -d
+```
+
+This builds the local image `wisdom-erp-backend:local` and exposes the API at `http://localhost:3000`. To stop it:
+
+```bash
+docker compose down
+```
+
 ---
 
 ## Database Management
+
+To apply the current Prisma schema directly to the configured database without creating a migration:
+
+```bash
+cd server
+npx prisma db push
+```
+
+This command uses `DATABASE_URL` from `server/.env`. It updates the database schema but does not create migration history; review Prisma's output before accepting any proposed data-loss changes.
 
 To view and manage your database records visually using Prisma Studio:
 
