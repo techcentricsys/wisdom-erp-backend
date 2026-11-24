@@ -295,12 +295,75 @@ export class MasterAccountsService {
     });
   }
 
+  private async countReferences(type: string, name: string): Promise<number> {
+    if (type === 'Customer') {
+      const [offers, indents, shipments, debitNotes, sampleIssues] =
+        await Promise.all([
+          this.prisma.offer.count({
+            where: { customer: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.indent.count({
+            where: { customer: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.tradeShipment.count({
+            where: { customer: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.debitNote.count({
+            where: { customer: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.sampleIssue.count({
+            where: { customer: { equals: name, mode: 'insensitive' } },
+          }),
+        ]);
+      return offers + indents + shipments + debitNotes + sampleIssues;
+    }
+    if (type === 'Supplier') {
+      const [offers, indents, shipments, debitNotes, receipts, sampleReceives] =
+        await Promise.all([
+          this.prisma.offer.count({
+            where: { supplier: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.indent.count({
+            where: { supplier: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.tradeShipment.count({
+            where: { supplier: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.debitNote.count({
+            where: { supplier: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.commissionReceipt.count({
+            where: { supplier: { equals: name, mode: 'insensitive' } },
+          }),
+          this.prisma.sampleReceive.count({
+            where: { supplier: { equals: name, mode: 'insensitive' } },
+          }),
+        ]);
+      return (
+        offers +
+        indents +
+        shipments +
+        debitNotes +
+        receipts +
+        sampleReceives
+      );
+    }
+    return 0;
+  }
+
   async remove(user: any, id: string) {
     const existing = await this.prisma.masterAccount.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Account not found.');
 
     await this.access.assertScreenPermission(user, existing.type, 'delete');
     await this.access.assertRecordOwnership(user, existing.createdBy);
+
+    const used = await this.countReferences(existing.type, existing.name);
+    if (used > 0) {
+      throw new BadRequestException(
+        `Cannot delete ${existing.type.toLowerCase()} '${existing.name}' because it is referenced in ${used} existing record(s).`,
+      );
+    }
 
     await this.prisma.masterAccount.delete({ where: { id } });
     return { ok: true, id };

@@ -496,6 +496,17 @@ export class ShipmentsService {
       existing.createdBy,
     );
 
+    if (dto.readyForDebitNote === false && existing.readyForDebitNote) {
+      const linkedDn = await this.prisma.debitNote.findUnique({
+        where: { shipmentNo: existing.no },
+      });
+      if (linkedDn) {
+        throw new BadRequestException(
+          `Debit note '${linkedDn.no}' already exists. Delete it before clearing Ready for Debit Note.`,
+        );
+      }
+    }
+
     if (dto.lines !== undefined) {
       await this.validateAgainstIndent(
         existing.indentNo,
@@ -557,6 +568,15 @@ export class ShipmentsService {
       existing.indentNo,
       existing.createdBy,
     );
+
+    const linkedDn = await this.prisma.debitNote.findUnique({
+      where: { shipmentNo: existing.no },
+    });
+    if (linkedDn) {
+      throw new BadRequestException(
+        `Shipment '${existing.no}' has debit note '${linkedDn.no}'. Delete the debit note first.`,
+      );
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.tradeShipment.delete({ where: { id: existing.id } });

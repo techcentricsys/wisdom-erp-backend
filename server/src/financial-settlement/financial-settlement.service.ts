@@ -193,6 +193,24 @@ export class FinancialSettlementService {
     return String(Math.max(lastNum, RECEIPT_BASE_NO) + 1);
   }
 
+  async eligibleShipments(user: any) {
+    await this.access.assertScreenPermission(user, 'Debit Note', 'view');
+    const ids = await this.access.resolveScopeUserIds(user);
+    const usedNos = (
+      await this.prisma.debitNote.findMany({ select: { shipmentNo: true } })
+    ).map((d) => d.shipmentNo);
+
+    return this.prisma.tradeShipment.findMany({
+      where: {
+        readyForDebitNote: true,
+        ...(usedNos.length ? { no: { notIn: usedNos } } : {}),
+        ...(ids ? { createdBy: { in: ids } } : {}),
+      },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async listDebitNotes(user: any, q: QuerySettlementDto) {
     await this.access.assertScreenPermission(user, 'Debit Note', 'view');
     const ids = await this.access.resolveScopeUserIds(user);
@@ -314,6 +332,15 @@ export class FinancialSettlementService {
     const ids = await this.access.resolveScopeUserIds(user);
     if (ids && !ids.includes(existing.createdBy ?? '')) {
       throw new ForbiddenException('Record outside your scope.');
+    }
+
+    const nextDate = dto.date?.trim() ?? existing.debitNoteDate;
+    const nextShipDate =
+      dto.shipDate !== undefined ? clean(dto.shipDate) : existing.shipDate;
+    if (nextShipDate && nextDate < nextShipDate) {
+      throw new BadRequestException(
+        'Debit note date cannot be before the shipment date.',
+      );
     }
 
     const received = round2(
@@ -460,6 +487,62 @@ export class FinancialSettlementService {
     return this.formatReceipt(row);
   }
 
+  private async validateReceiptAllocations(
+    receiptDate: string,
+    supplier: string,
+    lines: { debitNoteNo: string; amount: number }[],
+    excludeReceiptNo?: string,
+  ) {
+    const seen = new Set<string>();
+    for (const l of lines) {
+      const dnNo = l.debitNoteNo.trim();
+      if (seen.has(dnNo)) {
+        throw new BadRequestException(
+          `Duplicate debit note '${dnNo}' in the same receipt.`,
+        );
+      }
+      seen.add(dnNo);
+    }
+
+    const dnNos = Array.from(seen);
+    const notes = await this.prisma.debitNote.findMany({
+      where: { no: { in: dnNos } },
+      include: { receiptLines: true },
+    });
+    const byNo = new Map(notes.map((n) => [n.no, n]));
+
+    for (const l of lines) {
+      const dnNo = l.debitNoteNo.trim();
+      const note = byNo.get(dnNo);
+      if (!note) {
+        throw new BadRequestException(`Debit note '${dnNo}' not found.`);
+      }
+      if (note.supplier.trim().toLowerCase() !== supplier.trim().toLowerCase()) {
+        throw new BadRequestException(
+          `Debit note '${dnNo}' does not belong to supplier '${supplier}'.`,
+        );
+      }
+      if (receiptDate < note.debitNoteDate) {
+        throw new BadRequestException(
+          `Receipt date cannot be before debit note '${dnNo}' date (${note.debitNoteDate}).`,
+        );
+      }
+      const alreadyPaid = round2(
+        note.receiptLines
+          .filter((rl) => rl.receiptNo !== excludeReceiptNo)
+          .reduce((s, rl) => s + Number(rl.paidAmount || 0), 0),
+      );
+      const remaining = round2(
+        Number(note.totalCommissionAmount || 0) - alreadyPaid,
+      );
+      if (Number(l.amount) > remaining + 0.001) {
+        throw new BadRequestException(
+          `Receive amount (${l.amount}) exceeds remaining balance (${remaining}) for debit note '${dnNo}'.`,
+        );
+      }
+    }
+  }
+
   async createReceipt(user: any, dto: CreateCommissionReceiptDto) {
     await this.access.assertScreenPermission(
       user,
@@ -467,12 +550,16 @@ export class FinancialSettlementService {
       'create',
     );
 
+    const receiptDate = dto.date.trim();
+    const supplier = dto.supplier.trim();
+    await this.validateReceiptAllocations(receiptDate, supplier, dto.lines);
+
     const no = await this.generateReceiptNo(dto.no);
     const created = await this.prisma.commissionReceipt.create({
       data: {
         no,
-        receiptDate: dto.date.trim(),
-        supplier: dto.supplier.trim(),
+        receiptDate,
+        supplier,
         refNo: clean(dto.refNo) ?? null,
         remarks: clean(dto.remarks) ?? null,
         createdBy: user.id,
@@ -510,6 +597,22 @@ export class FinancialSettlementService {
     if (ids && !ids.includes(existing.createdBy ?? '')) {
       throw new ForbiddenException('Record outside your scope.');
     }
+
+    const nextDate = dto.date?.trim() ?? existing.receiptDate;
+    const nextSupplier = dto.supplier?.trim() ?? existing.supplier;
+    const nextLines =
+      dto.lines ??
+      existing.lines.map((l) => ({
+        debitNoteNo: l.debitNoteNo,
+        amount: Number(l.paidAmount),
+      }));
+
+    await this.validateReceiptAllocations(
+      nextDate,
+      nextSupplier,
+      nextLines,
+      existing.no,
+    );
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.lines) {

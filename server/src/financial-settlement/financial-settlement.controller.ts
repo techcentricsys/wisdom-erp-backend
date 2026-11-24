@@ -25,6 +25,11 @@ import { FinancialSettlementService } from './financial-settlement.service.js';
 export class FinancialSettlementController {
   constructor(private readonly service: FinancialSettlementService) {}
 
+  @Get('eligible-shipments')
+  eligibleShipments(@Req() req: any) {
+    return this.service.eligibleShipments(req.accessUser);
+  }
+
   @Get('debit-notes')
   debitNotes(@Req() req: any, @Query() q: QuerySettlementDto) {
     return this.service.listDebitNotes(req.accessUser, q);
