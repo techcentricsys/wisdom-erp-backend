@@ -66,7 +66,15 @@ export class CreateInquiryDto {
 
   @IsOptional()
   @IsString()
+  salespersonMasterId?: string;
+
+  @IsOptional()
+  @IsString()
   commercialPersonId?: string;
+
+  @IsOptional()
+  @IsString()
+  commercialPersonMasterId?: string;
 
   @IsOptional()
   @IsString()
@@ -110,7 +118,15 @@ export class UpdateInquiryDto {
 
   @IsOptional()
   @IsString()
+  salespersonMasterId?: string | null;
+
+  @IsOptional()
+  @IsString()
   commercialPersonId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  commercialPersonMasterId?: string | null;
 
   @IsOptional()
   @IsString()

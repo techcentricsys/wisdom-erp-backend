@@ -94,7 +94,8 @@ export class SetupMastersService implements OnModuleInit {
           where: { designation: { equals: name, mode: 'insensitive' } },
         });
       case 'salesperson': {
-        const [offers, indents, accounts] = await Promise.all([
+        const master = await this.prisma.setupMasterItem.findUnique({ where: { kind_name: { kind, name } }, select: { id: true } });
+        const [offers, indents, accounts, inquiries] = await Promise.all([
           this.prisma.offer.count({
             where: { salesperson: { equals: name, mode: 'insensitive' } },
           }),
@@ -104,11 +105,13 @@ export class SetupMastersService implements OnModuleInit {
           this.prisma.masterAccount.count({
             where: { salesperson: { equals: name, mode: 'insensitive' } },
           }),
+          master ? this.prisma.customerInquiry.count({ where: { salespersonMasterId: master.id } }) : 0,
         ]);
-        return offers + indents + accounts;
+        return offers + indents + accounts + inquiries;
       }
       case 'commercialPerson': {
-        const [offers, indents, accounts] = await Promise.all([
+        const master = await this.prisma.setupMasterItem.findUnique({ where: { kind_name: { kind, name } }, select: { id: true } });
+        const [offers, indents, accounts, inquiries] = await Promise.all([
           this.prisma.offer.count({
             where: { commercialPerson: { equals: name, mode: 'insensitive' } },
           }),
@@ -118,8 +121,9 @@ export class SetupMastersService implements OnModuleInit {
           this.prisma.masterAccount.count({
             where: { commercialPerson: { equals: name, mode: 'insensitive' } },
           }),
+          master ? this.prisma.customerInquiry.count({ where: { commercialPersonMasterId: master.id } }) : 0,
         ]);
-        return offers + indents + accounts;
+        return offers + indents + accounts + inquiries;
       }
       case 'manufacturer': {
         const [offerLines, indentLines] = await Promise.all([
