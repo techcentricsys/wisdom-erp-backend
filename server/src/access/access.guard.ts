@@ -18,7 +18,10 @@ export class AccessGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Session expired. Please log in again.');
     }
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, include: { userRoles: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: { userRoles: { include: { role: true } } },
+    });
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('Account is not active.');
     req.accessUser = user;
     return true;

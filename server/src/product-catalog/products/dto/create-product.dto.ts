@@ -1,22 +1,18 @@
-
+import { Type } from 'class-transformer';
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsBoolean,
-  IsNumber,
   IsArray,
-  IsInt,
-  Min,
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class CreateProductSupplierDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  supplierId: number;
+  @IsString()
+  @IsNotEmpty()
+  supplierId: string;
 
   @IsOptional()
   @IsString()
@@ -37,22 +33,16 @@ export class CreateProductDto {
   description?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  categoryId?: number;
+  @IsString()
+  categoryId?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  productTypeId?: number;
+  @IsString()
+  productTypeId?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  defaultUomId?: number;
+  @IsString()
+  defaultUomId?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -65,6 +55,18 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   packing?: string;
+
+  @IsOptional()
+  @IsString()
+  hsCode?: string;
+
+  @IsOptional()
+  @IsString()
+  grade?: string;
+
+  @IsOptional()
+  @IsString()
+  origin?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -90,15 +92,11 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsArray()
-  @Type(() => Number)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  supplierIds?: number[];
+  @IsString({ each: true })
+  supplierIds?: string[];
 
   @IsOptional()
   @IsArray()
-  @Type(() => Number)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  manufacturerIds?: number[];
+  @IsString({ each: true })
+  manufacturerIds?: string[];
 }

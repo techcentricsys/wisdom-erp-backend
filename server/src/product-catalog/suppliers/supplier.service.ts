@@ -1,10 +1,8 @@
-
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateSupplierDto } from './dto/create-supplier.dto.js';
 import { UpdateSupplierDto } from './dto/update-supplier.dto.js';
@@ -13,8 +11,8 @@ import { UpdateSupplierDto } from './dto/update-supplier.dto.js';
 export class SupplierService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private validateId(id: number) {
-    if (!Number.isInteger(id) || id <= 0) {
+  private validateId(id: string) {
+    if (!id?.trim()) {
       throw new BadRequestException('Invalid Supplier ID');
     }
   }
@@ -40,7 +38,7 @@ export class SupplierService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     this.validateId(id);
 
     const supplier = await this.prisma.supplier.findUnique({
@@ -61,7 +59,7 @@ export class SupplierService {
     return supplier;
   }
 
-  async update(id: number, dto: UpdateSupplierDto) {
+  async update(id: string, dto: UpdateSupplierDto) {
     this.validateId(id);
     await this.findOne(id);
 
@@ -71,7 +69,7 @@ export class SupplierService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     this.validateId(id);
     await this.findOne(id);
 

@@ -1,11 +1,4 @@
-
-import { Type } from 'class-transformer';
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsInt,
-} from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateCategoryDto {
   @IsString()
@@ -21,7 +14,6 @@ export class CreateCategoryDto {
   description?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  parentId?: number;
+  @IsString()
+  parentId?: string;
 }

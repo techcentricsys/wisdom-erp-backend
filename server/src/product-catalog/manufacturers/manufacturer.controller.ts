@@ -1,24 +1,19 @@
-
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
-  ParseIntPipe,
 } from '@nestjs/common';
-
-import { ManufacturerService } from './manufacturer.service.js';
 import { CreateManufacturerDto } from './dto/create-manufacturer.dto.js';
 import { UpdateManufacturerDto } from './dto/update-manufacturer.dto.js';
+import { ManufacturerService } from './manufacturer.service.js';
 
 @Controller('manufacturers')
 export class ManufacturerController {
-  constructor(
-    private readonly manufacturerService: ManufacturerService,
-  ) {}
+  constructor(private readonly manufacturerService: ManufacturerService) {}
 
   @Post()
   create(@Body() dto: CreateManufacturerDto) {
@@ -31,20 +26,17 @@ export class ManufacturerController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.manufacturerService.findOne(id);
   }
 
   @Put(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateManufacturerDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateManufacturerDto) {
     return this.manufacturerService.update(id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id') id: string) {
     return this.manufacturerService.remove(id);
   }
 }

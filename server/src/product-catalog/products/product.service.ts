@@ -1,10 +1,8 @@
-
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
@@ -29,8 +27,8 @@ export class ProductService {
     },
   };
 
-  private validateId(id: number, field = 'Product') {
-    if (!Number.isInteger(id) || id <= 0) {
+  private validateId(id: string, field = 'Product') {
+    if (!id?.trim()) {
       throw new BadRequestException(`Invalid ${field} ID`);
     }
   }
@@ -45,16 +43,16 @@ export class ProductService {
 
     const suppliers = supplierLinks?.length
       ? supplierLinks.map((link) => ({
-          supplierId: Number(link.supplierId),
+          supplierId: String(link.supplierId),
           supplierProductCode: link.supplierProductCode,
         }))
       : supplierIds?.map((supplierId) => ({
-          supplierId: Number(supplierId),
+          supplierId: String(supplierId),
           supplierProductCode: undefined,
         }));
 
     const manufacturers = manufacturerIds?.map((manufacturerId) => ({
-      manufacturerId: Number(manufacturerId),
+      manufacturerId: String(manufacturerId),
     }));
 
     suppliers?.forEach((supplier) => {
@@ -68,7 +66,6 @@ export class ProductService {
     return this.prisma.item.create({
       data: {
         ...productData,
-
         suppliers: suppliers?.length
           ? {
               createMany: {
@@ -76,7 +73,6 @@ export class ProductService {
               },
             }
           : undefined,
-
         manufacturers: manufacturers?.length
           ? {
               createMany: {
@@ -98,7 +94,7 @@ export class ProductService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     this.validateId(id);
 
     const product = await this.prisma.item.findUnique({
@@ -113,7 +109,7 @@ export class ProductService {
     return product;
   }
 
-  async update(id: number, dto: UpdateProductDto) {
+  async update(id: string, dto: UpdateProductDto) {
     this.validateId(id);
     await this.findOne(id);
 
@@ -124,18 +120,19 @@ export class ProductService {
       ...productData
     } = dto;
 
-    const suppliers = supplierLinks !== undefined
-      ? supplierLinks.map((link) => ({
-          supplierId: Number(link.supplierId),
-          supplierProductCode: link.supplierProductCode,
-        }))
-      : supplierIds?.map((supplierId) => ({
-          supplierId: Number(supplierId),
-          supplierProductCode: undefined,
-        }));
+    const suppliers =
+      supplierLinks !== undefined
+        ? supplierLinks.map((link) => ({
+            supplierId: String(link.supplierId),
+            supplierProductCode: link.supplierProductCode,
+          }))
+        : supplierIds?.map((supplierId) => ({
+            supplierId: String(supplierId),
+            supplierProductCode: undefined,
+          }));
 
     const manufacturers = manufacturerIds?.map((manufacturerId) => ({
-      manufacturerId: Number(manufacturerId),
+      manufacturerId: String(manufacturerId),
     }));
 
     suppliers?.forEach((supplier) => {
@@ -150,38 +147,38 @@ export class ProductService {
       where: { id },
       data: {
         ...productData,
-
-        suppliers: suppliers !== undefined
-          ? {
-              deleteMany: {},
-              ...(suppliers.length
-                ? {
-                    createMany: {
-                      data: suppliers,
-                    },
-                  }
-                : {}),
-            }
-          : undefined,
-
-        manufacturers: manufacturerIds !== undefined
-          ? {
-              deleteMany: {},
-              ...(manufacturers?.length
-                ? {
-                    createMany: {
-                      data: manufacturers,
-                    },
-                  }
-                : {}),
-            }
-          : undefined,
+        suppliers:
+          suppliers !== undefined
+            ? {
+                deleteMany: {},
+                ...(suppliers.length
+                  ? {
+                      createMany: {
+                        data: suppliers,
+                      },
+                    }
+                  : {}),
+              }
+            : undefined,
+        manufacturers:
+          manufacturerIds !== undefined
+            ? {
+                deleteMany: {},
+                ...(manufacturers?.length
+                  ? {
+                      createMany: {
+                        data: manufacturers,
+                      },
+                    }
+                  : {}),
+              }
+            : undefined,
       },
       include: this.productRelations,
     });
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     this.validateId(id);
     await this.findOne(id);
 

@@ -1,9 +1,4 @@
-
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateManufacturerDto } from './dto/create-manufacturer.dto.js';
 import { UpdateManufacturerDto } from './dto/update-manufacturer.dto.js';
@@ -33,7 +28,7 @@ export class ManufacturerService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     const manufacturer = await this.prisma.manufacturer.findUnique({
       where: { id },
       include: {
@@ -52,7 +47,7 @@ export class ManufacturerService {
     return manufacturer;
   }
 
-  async update(id: number, dto: UpdateManufacturerDto) {
+  async update(id: string, dto: UpdateManufacturerDto) {
     await this.findOne(id);
 
     return this.prisma.manufacturer.update({
@@ -61,7 +56,7 @@ export class ManufacturerService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     await this.findOne(id);
 
     return this.prisma.manufacturer.update({

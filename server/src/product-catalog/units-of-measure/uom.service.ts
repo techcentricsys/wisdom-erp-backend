@@ -1,10 +1,8 @@
-
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateUomDto } from './dto/create-uom.dto.js';
 import { UpdateUomDto } from './dto/update-uom.dto.js';
@@ -13,13 +11,12 @@ import { UpdateUomDto } from './dto/update-uom.dto.js';
 export class UomService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private validateId(id: number) {
-    if (!Number.isInteger(id) || id <= 0) {
+  private validateId(id: string) {
+    if (!id?.trim()) {
       throw new BadRequestException('Invalid Unit of Measure ID');
     }
   }
 
-  // Create a unit of measure
   async create(dto: CreateUomDto) {
     return this.prisma.unitOfMeasure.create({
       data: {
@@ -29,7 +26,6 @@ export class UomService {
     });
   }
 
-  // Get all units
   async findAll() {
     return this.prisma.unitOfMeasure.findMany({
       orderBy: {
@@ -38,8 +34,7 @@ export class UomService {
     });
   }
 
-  // Get one unit by ID
-  async findOne(id: number) {
+  async findOne(id: string) {
     this.validateId(id);
 
     const uom = await this.prisma.unitOfMeasure.findUnique({
@@ -53,8 +48,7 @@ export class UomService {
     return uom;
   }
 
-  // Update a unit
-  async update(id: number, dto: UpdateUomDto) {
+  async update(id: string, dto: UpdateUomDto) {
     this.validateId(id);
     await this.findOne(id);
 
@@ -64,8 +58,7 @@ export class UomService {
     });
   }
 
-  // Delete a unit
-  async remove(id: number) {
+  async remove(id: string) {
     this.validateId(id);
     await this.findOne(id);
 

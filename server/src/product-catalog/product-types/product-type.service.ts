@@ -1,9 +1,4 @@
-
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateProductTypeDto } from './dto/create-product-type.dto.js';
 import { UpdateProductTypeDto } from './dto/update-product-type.dto.js';
@@ -28,7 +23,7 @@ export class ProductTypeService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     const productType = await this.prisma.productType.findUnique({
       where: { id },
     });
@@ -40,7 +35,7 @@ export class ProductTypeService {
     return productType;
   }
 
-  async update(id: number, dto: UpdateProductTypeDto) {
+  async update(id: string, dto: UpdateProductTypeDto) {
     await this.findOne(id);
 
     return this.prisma.productType.update({
@@ -49,7 +44,7 @@ export class ProductTypeService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     await this.findOne(id);
 
     return this.prisma.productType.delete({

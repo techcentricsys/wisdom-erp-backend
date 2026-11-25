@@ -1,9 +1,8 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
@@ -12,8 +11,8 @@ import { UpdateCategoryDto } from './dto/update-category.dto.js';
 export class CategoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async getCategoryById(id: number) {
-    if (!Number.isInteger(id) || id <= 0) {
+  private async getCategoryById(id: string) {
+    if (!id?.trim()) {
       throw new BadRequestException('Invalid category ID');
     }
 
@@ -29,7 +28,7 @@ export class CategoryService {
   }
 
   async create(dto: CreateCategoryDto) {
-    let internalParentId: number | null = null;
+    let internalParentId: string | null = null;
 
     if (dto.parentId !== undefined && dto.parentId !== null) {
       const parent = await this.getCategoryById(dto.parentId);
@@ -62,7 +61,7 @@ export class CategoryService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     const category = await this.getCategoryById(id);
 
     return this.prisma.itemCategory.findUnique({
@@ -74,20 +73,18 @@ export class CategoryService {
     });
   }
 
-  async update(id: number, dto: UpdateCategoryDto) {
+  async update(id: string, dto: UpdateCategoryDto) {
     const existing = await this.getCategoryById(id);
 
     const { parentId, ...otherFields } = dto;
-    const data: any = { ...otherFields };
+    const data: Record<string, any> = { ...otherFields };
 
     if (parentId !== undefined) {
       if (parentId === null) {
         data.parentId = null;
       } else {
         if (parentId === id) {
-          throw new BadRequestException(
-            'A category cannot be its own parent',
-          );
+          throw new BadRequestException('A category cannot be its own parent');
         }
 
         const parent = await this.getCategoryById(parentId);
@@ -105,7 +102,7 @@ export class CategoryService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const existing = await this.getCategoryById(id);
 
     await this.prisma.itemCategory.delete({
